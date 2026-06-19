@@ -103,17 +103,7 @@ export default function InvestorDetail() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       {p.pct_capital !== null ? (
-                        <div>
-                          <span className="font-mono text-slate-700">{p.pct_capital.toFixed(4)}%</span>
-                          <div className="flex justify-end mt-1">
-                            <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-400 rounded-full"
-                                style={{ width: `${Math.min(100, p.pct_capital)}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                        <span className="font-mono text-slate-700">{p.pct_capital.toFixed(4)}%</span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}

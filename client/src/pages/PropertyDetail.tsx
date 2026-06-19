@@ -104,17 +104,7 @@ export default function PropertyDetail() {
                           {inv.notes}
                         </p>
                       )}
-                      {/* Ownership bar */}
-                      {inv.pct_capital !== null && inv.pct_capital > 0 && (
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-400 rounded-full"
-                              style={{ width: `${Math.min(100, inv.pct_capital)}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
+
                     </td>
                     <td className="px-5 py-3 text-right">
                       {inv.pct_capital !== null ? (
