@@ -12,7 +12,8 @@ function initials(name: string) {
 
 export default function InvestorDetail() {
   const { name } = useParams<{ name: string }>();
-  const decodedName = decodeURIComponent(name ?? "");
+  let decodedName = name ?? "";
+  try { decodedName = decodeURIComponent(decodedName); } catch { /* already decoded or malformed — use raw */ }
   const investor = INVESTOR_INDEX.find(
     (inv) => inv.name.toLowerCase() === decodedName.toLowerCase()
   );
