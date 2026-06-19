@@ -1,7 +1,7 @@
 // Home page — Command Center dashboard
 // Tabs: Properties | Investors | Global search
-import { useState, useMemo } from "react";
-import { Link } from "wouter";
+import { useState, useMemo, useEffect } from "react";
+import { Link, useSearch } from "wouter";
 import { Search, Building2, Users, ChevronRight, AlertCircle } from "lucide-react";
 import Layout from "@/components/Layout";
 import { PROPERTIES, buildInvestorIndex } from "@/lib/investorData";
@@ -35,8 +35,16 @@ function pctBar(pct: number | null) {
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("properties");
+  const search = useSearch();
+  const urlTab = new URLSearchParams(search).get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(urlTab === "investors" ? "investors" : "properties");
   const [query, setQuery] = useState("");
+
+  // Sync tab when URL changes (sidebar nav clicks)
+  useEffect(() => {
+    const t = new URLSearchParams(search).get("tab") as Tab | null;
+    setTab(t === "investors" ? "investors" : "properties");
+  }, [search]);
 
   const filteredProperties = useMemo(() => {
     const q = query.toLowerCase();
