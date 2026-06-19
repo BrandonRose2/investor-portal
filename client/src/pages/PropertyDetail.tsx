@@ -86,14 +86,21 @@ export default function PropertyDetail() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Investor / Entity</th>
                   <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">% Capital</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Investor / Entity</th>
                   <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {property.investors.map((inv, idx) => (
                   <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                    <td className="px-5 py-3 text-right">
+                      {inv.pct_capital !== null ? (
+                        <span className="font-mono text-slate-700">{inv.pct_capital.toFixed(4)}%</span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3">
                       <Link href={`/investor/${encodeURIComponent(inv.name)}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
                         {inv.name}
@@ -103,14 +110,6 @@ export default function PropertyDetail() {
                           <AlertCircle className="w-3 h-3 shrink-0" />
                           {inv.notes}
                         </p>
-                      )}
-
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {inv.pct_capital !== null ? (
-                        <span className="font-mono text-slate-700">{inv.pct_capital.toFixed(4)}%</span>
-                      ) : (
-                        <span className="text-slate-300">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3">

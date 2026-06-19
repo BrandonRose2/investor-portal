@@ -84,29 +84,29 @@ export default function InvestorDetail() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">% Capital</th>
                   <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Property</th>
                   <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Entity</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">% Capital</th>
                   <th className="w-8 px-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {investor.properties.map((p, idx) => (
                   <tr key={idx} className={`${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} group`}>
-                    <td className="px-5 py-3">
-                      <Link href={`/property/${p.propertyId}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
-                      {p.propertyName}
-                    </Link>
-                    </td>
-                    <td className="px-5 py-3 text-slate-500 text-xs hidden sm:table-cell truncate max-w-xs">
-                      {p.entityName}
-                    </td>
                     <td className="px-5 py-3 text-right">
                       {p.pct_capital !== null ? (
                         <span className="font-mono text-slate-700">{p.pct_capital.toFixed(4)}%</span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <Link href={`/property/${p.propertyId}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
+                        {p.propertyName}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3 text-slate-500 text-xs hidden sm:table-cell truncate max-w-xs">
+                      {p.entityName}
                     </td>
                     <td className="px-2 py-3">
                       <Link href={`/property/${p.propertyId}`}>
