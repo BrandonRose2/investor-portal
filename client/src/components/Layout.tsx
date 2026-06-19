@@ -2,21 +2,54 @@
 // Design: light mode, blue-700 accent, Inter font, slate palette
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Building2, Users, LayoutDashboard, Menu, X } from "lucide-react";
+import { Building2, Users, LayoutDashboard, Menu, X, Settings2, BookOpen } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const NAV = [
+const NAV_TOP = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/?tab=properties", label: "Properties", icon: Building2 },
-  { href: "/?tab=investors", label: "Investors", icon: Users },
+  { href: "/directory", label: "Properties", icon: Building2 },
+  { href: "/directory?tab=investors", label: "Investors", icon: Users },
+  { href: "/directory?tab=properties", label: "Directory", icon: BookOpen },
+];
+
+const NAV_BOTTOM = [
+  { href: "/settings", label: "Admin Settings", icon: Settings2 },
 ];
 
 export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  function isActive(href: string) {
+    const path = href.split("?")[0];
+    if (href === "/") return location === "/";
+    return location.startsWith(path);
+  }
+
+  function navLink(href: string, label: string, Icon: React.ElementType) {
+    const active = isActive(href);
+    return (
+      <Link
+        key={href}
+        href={href}
+        className={`
+          flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium
+          transition-colors duration-100
+          ${active
+            ? "bg-blue-50 text-blue-700"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }
+        `}
+        onClick={() => setMobileOpen(false)}
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        {label}
+      </Link>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white flex">
@@ -33,42 +66,24 @@ export default function Layout({ children }: LayoutProps) {
         <div className="h-14 flex items-center gap-3 px-4 border-b border-slate-200 shrink-0">
           <img
             src="https://d2xsxph8kpxj0f.cloudfront.net/310519663449376037/Bsfxz8WvKfLUNyvCCpFGAT/invest-logo-JVNmDYGGounncZ8i8riyvn.webp"
-            alt="GP"
+            alt="Investor Portal"
             className="w-8 h-8 rounded-md object-cover"
           />
           <div className="text-sm font-bold text-slate-900 leading-tight">Investor Portal</div>
         </div>
 
-        {/* Nav */}
+        {/* Main Nav */}
         <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              href === "/"
-                ? location === "/" && !location.includes("tab")
-                : location.startsWith(href.split("?")[0]);
-            return (
-              <Link key={href} href={href}
-                className={`
-                  flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium
-                  transition-colors duration-100
-                  ${isActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  }
-                `}
-                onClick={() => setMobileOpen(false)}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                {label}
-              </Link>
-            );
-          })}
+          {NAV_TOP.map(({ href, label, icon: Icon }) => navLink(href, label, Icon))}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-200 shrink-0">
-          <p className="text-xs text-slate-400">37 Properties · 147+ Investors</p>
-          <p className="text-xs text-slate-400 mt-0.5">Data as of 10/1/2020</p>
+        {/* Bottom Nav */}
+        <div className="px-2 pb-3 border-t border-slate-200 pt-2 space-y-0.5">
+          {NAV_BOTTOM.map(({ href, label, icon: Icon }) => navLink(href, label, Icon))}
+          <div className="px-3 pt-2">
+            <p className="text-xs text-slate-400">37 Properties · 147+ Investors</p>
+            <p className="text-xs text-slate-400 mt-0.5">Data as of 10/1/2020</p>
+          </div>
         </div>
       </aside>
 

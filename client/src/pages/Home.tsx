@@ -1,7 +1,7 @@
 // Home page — Command Center dashboard
 // Tabs: Properties | Investors | Global search
-import { useState, useMemo, useEffect } from "react";
-import { Link, useSearch } from "wouter";
+import { useState, useMemo } from "react";
+import { Link, useSearch, useLocation } from "wouter";
 import { Search, Building2, Users, ChevronRight, AlertCircle } from "lucide-react";
 import Layout from "@/components/Layout";
 import { PROPERTIES, buildInvestorIndex } from "@/lib/investorData";
@@ -36,15 +36,9 @@ function pctBar(pct: number | null) {
 
 export default function Home() {
   const search = useSearch();
-  const urlTab = new URLSearchParams(search).get("tab") as Tab | null;
-  const [tab, setTab] = useState<Tab>(urlTab === "investors" ? "investors" : "properties");
+  const [, navigate] = useLocation();
   const [query, setQuery] = useState("");
-
-  // Sync tab when URL changes (sidebar nav clicks)
-  useEffect(() => {
-    const t = new URLSearchParams(search).get("tab") as Tab | null;
-    setTab(t === "investors" ? "investors" : "properties");
-  }, [search]);
+  const tab: Tab = new URLSearchParams(search).get("tab") === "investors" ? "investors" : "properties";
 
   const filteredProperties = useMemo(() => {
     const q = query.toLowerCase();
@@ -108,7 +102,7 @@ export default function Home() {
           {(["properties", "investors"] as Tab[]).map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => navigate(`/directory?tab=${t}`)}
               className={`
                 flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors duration-100
                 ${tab === t
