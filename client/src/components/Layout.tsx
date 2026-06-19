@@ -2,7 +2,7 @@
 // Design: light mode, blue-700 accent, Inter font, slate palette
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Building2, Users, Search, LayoutDashboard, Menu, X } from "lucide-react";
+import { Building2, Users, LayoutDashboard, Menu, X } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -90,10 +90,6 @@ export default function Layout({ children }: LayoutProps) {
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <div className="flex items-center gap-2 text-slate-400">
-            <Search className="w-4 h-4" />
-            <span className="text-sm hidden sm:block text-slate-400">Search properties or investors below…</span>
-          </div>
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-slate-400 hidden sm:block">Internal Use Only</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
