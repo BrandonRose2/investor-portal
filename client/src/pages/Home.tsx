@@ -129,8 +129,7 @@ export default function Home() {
             )}
             {filteredProperties.map((prop) => (
               <Link key={prop.id} href={`/property/${prop.id}`}>
-                <a className="block group">
-                  <div className="flex items-center gap-4 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
+                <div className="block group flex items-center gap-4 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
                     {/* Left accent bar */}
                     <div className={`w-1 h-10 rounded-full shrink-0 ${prop.isGrovePark ? "bg-amber-400" : "bg-blue-500"}`} />
 
@@ -159,8 +158,7 @@ export default function Home() {
                     </div>
 
                     <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors shrink-0" />
-                  </div>
-                </a>
+                </div>
               </Link>
             ))}
           </div>
@@ -177,8 +175,7 @@ export default function Home() {
             )}
             {filteredInvestors.map((inv) => (
               <Link key={inv.name} href={`/investor/${encodeURIComponent(inv.name)}`}>
-                <a className="block group">
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
+                <div className="block group flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
                     {/* Avatar */}
                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
                       {initials(inv.name)}
@@ -200,8 +197,7 @@ export default function Home() {
                     </div>
 
                     <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors shrink-0" />
-                  </div>
-                </a>
+                </div>
               </Link>
             ))}
           </div>

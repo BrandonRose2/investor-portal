@@ -23,7 +23,7 @@ export default function InvestorDetail() {
         <div className="max-w-3xl mx-auto px-4 py-12 text-center">
           <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-slate-700">Investor not found</h2>
-          <Link href="/"><a className="text-sm text-blue-600 hover:underline mt-2 inline-block">← Back to directory</a></Link>
+          <Link href="/" className="text-sm text-blue-600 hover:underline mt-2 inline-block">← Back to directory</Link>
         </div>
       </Layout>
     );
@@ -36,11 +36,9 @@ export default function InvestorDetail() {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Breadcrumb */}
-        <Link href="/">
-          <a className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-5 transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Directory
-          </a>
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-5 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Directory
         </Link>
 
         {/* Header card */}
@@ -95,11 +93,9 @@ export default function InvestorDetail() {
                 {investor.properties.map((p, idx) => (
                   <tr key={idx} className={`${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} group`}>
                     <td className="px-5 py-3">
-                      <Link href={`/property/${p.propertyId}`}>
-                        <a className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
-                          {p.propertyName}
-                        </a>
-                      </Link>
+                      <Link href={`/property/${p.propertyId}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
+                      {p.propertyName}
+                    </Link>
                     </td>
                     <td className="px-5 py-3 text-slate-500 text-xs hidden sm:table-cell truncate max-w-xs">
                       {p.entityName}
@@ -123,10 +119,8 @@ export default function InvestorDetail() {
                     </td>
                     <td className="px-2 py-3">
                       <Link href={`/property/${p.propertyId}`}>
-                        <a>
-                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors" />
-                        </a>
-                      </Link>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors" />
+                    </Link>
                     </td>
                   </tr>
                 ))}

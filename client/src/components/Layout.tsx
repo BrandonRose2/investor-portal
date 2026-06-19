@@ -50,21 +50,19 @@ export default function Layout({ children }: LayoutProps) {
                 ? location === "/" && !location.includes("tab")
                 : location.startsWith(href.split("?")[0]);
             return (
-              <Link key={href} href={href}>
-                <a
-                  className={`
-                    flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium
-                    transition-colors duration-100
-                    ${isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }
-                  `}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </a>
+              <Link key={href} href={href}
+                className={`
+                  flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium
+                  transition-colors duration-100
+                  ${isActive
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }
+                `}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {label}
               </Link>
             );
           })}

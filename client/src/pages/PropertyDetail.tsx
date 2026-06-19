@@ -14,7 +14,7 @@ export default function PropertyDetail() {
         <div className="max-w-3xl mx-auto px-4 py-12 text-center">
           <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
           <h2 className="text-lg font-semibold text-slate-700">Property not found</h2>
-          <Link href="/"><a className="text-sm text-blue-600 hover:underline mt-2 inline-block">← Back to directory</a></Link>
+          <Link href="/" className="text-sm text-blue-600 hover:underline mt-2 inline-block">← Back to directory</Link>
         </div>
       </Layout>
     );
@@ -26,11 +26,9 @@ export default function PropertyDetail() {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Breadcrumb */}
-        <Link href="/">
-          <a className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-5 transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Directory
-          </a>
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 mb-5 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Directory
         </Link>
 
         {/* Header card */}
@@ -97,10 +95,8 @@ export default function PropertyDetail() {
                 {property.investors.map((inv, idx) => (
                   <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                     <td className="px-5 py-3">
-                      <Link href={`/investor/${encodeURIComponent(inv.name)}`}>
-                        <a className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
-                          {inv.name}
-                        </a>
+                      <Link href={`/investor/${encodeURIComponent(inv.name)}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
+                        {inv.name}
                       </Link>
                       {inv.notes && (
                         <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
