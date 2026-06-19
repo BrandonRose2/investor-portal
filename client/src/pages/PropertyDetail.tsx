@@ -102,7 +102,7 @@ export default function PropertyDetail() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
                   <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">% Capital</th>
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Investor / Entity</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Entity (Owner)</th>
                   <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
                 </tr>
               </thead>
