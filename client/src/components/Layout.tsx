@@ -36,10 +36,7 @@ export default function Layout({ children }: LayoutProps) {
             alt="GP"
             className="w-8 h-8 rounded-md object-cover"
           />
-          <div>
-            <div className="text-sm font-700 text-slate-900 leading-tight font-bold">Grove Park</div>
-            <div className="text-xs text-slate-500 leading-tight">Investor Portal</div>
-          </div>
+          <div className="text-sm font-bold text-slate-900 leading-tight">Investor Portal</div>
         </div>
 
         {/* Nav */}
