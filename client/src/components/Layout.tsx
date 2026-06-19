@@ -32,7 +32,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="h-14 flex items-center gap-3 px-4 border-b border-slate-200 shrink-0">
           <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663449376037/Bsfxz8WvKfLUNyvCCpFGAT/gp-logo-nGb36AVCw3MJssHxp9Kd5P.webp"
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663449376037/Bsfxz8WvKfLUNyvCCpFGAT/invest-logo-JVNmDYGGounncZ8i8riyvn.webp"
             alt="GP"
             className="w-8 h-8 rounded-md object-cover"
           />
