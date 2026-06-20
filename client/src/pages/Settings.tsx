@@ -1,11 +1,11 @@
-// Settings page — PIN-protected admin panel (PIN: 3060)
-// Allows editing, adding, and deleting properties and their investors
-import { useState, useRef } from "react";
-import { useAdmin } from "@/contexts/AdminContext";
+// Admin Settings page — PIN-gated, tRPC-backed
+// Investors tab (default): grouped view, expandable rows, status management
+// Properties tab: property list with investor counts
+import { useState, useRef, useMemo } from "react";
+import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -32,18 +32,35 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
-  RotateCcw,
   Users,
   Building2,
   Search,
+  Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Upload,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Property, Investor } from "@/lib/investorData";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+
+const ADMIN_PIN = "3060";
+
+const STATUS_OPTIONS = [
+  { value: "active",      label: "Active",      cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { value: "deceased",    label: "Deceased",    cls: "bg-slate-100 text-slate-500 border-slate-200" },
+  { value: "transferred", label: "Transferred", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  { value: "bought_out",  label: "Bought Out",  cls: "bg-red-50 text-red-700 border-red-200" },
+];
+
+type SortDir = "asc" | "desc" | null;
 
 // ── PIN Lock Screen ────────────────────────────────────────────────────────────
-function PinLock() {
-  const { login, authError } = useAdmin();
+function PinLock({ onUnlock }: { onUnlock: () => void }) {
   const [digits, setDigits] = useState(["", "", "", ""]);
+  const [error, setError] = useState(false);
   const refs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -59,8 +76,12 @@ function PinLock() {
     if (val && idx < 3) refs[idx + 1].current?.focus();
     if (val && idx === 3) {
       const pin = [...next.slice(0, 3), val].join("");
-      if (!login(pin)) {
+      if (pin === ADMIN_PIN) {
+        onUnlock();
+      } else {
+        setError(true);
         setDigits(["", "", "", ""]);
+        setTimeout(() => setError(false), 1500);
         refs[0].current?.focus();
       }
     }
@@ -79,10 +100,9 @@ function PinLock() {
           <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-5">
             <Lock className="w-7 h-7 text-blue-600" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-1">Admin Access</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">Admin Settings</h2>
           <p className="text-sm text-slate-500 mb-7">Enter your 4-digit PIN to continue</p>
-
-          <div className="flex justify-center gap-3 mb-6">
+          <div className="flex justify-center gap-3 mb-4">
             {digits.map((d, i) => (
               <input
                 key={i}
@@ -91,320 +111,135 @@ function PinLock() {
                 inputMode="numeric"
                 maxLength={1}
                 value={d}
+                autoFocus={i === 0}
                 onChange={(e) => handleDigit(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
-                className="w-12 h-14 text-center text-2xl font-bold border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors bg-slate-50"
-                autoFocus={i === 0}
+                className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl outline-none transition-colors
+                  ${error ? "border-red-400 bg-red-50" : "border-slate-200 focus:border-blue-500 bg-white"}`}
               />
             ))}
           </div>
-
-          {authError && (
-            <p className="text-sm text-red-500 font-medium">{authError}</p>
-          )}
+          {error && <p className="text-sm text-red-500 mt-2">Incorrect PIN. Try again.</p>}
         </div>
       </div>
     </Layout>
   );
 }
 
-// ── Blank property template ────────────────────────────────────────────────────
-function blankProperty(): Property {
-  return {
-    id: `prop-${Date.now()}`,
-    name: "",
-    entity_name: "",
-    entity_ein: "",
-    investors: [],
-  };
-}
+// ── Main Admin Panel ───────────────────────────────────────────────────────────
+type AdminTab = "investors" | "properties";
 
-function blankInvestor(): Investor {
-  return { name: "", pct_capital: null, email: "" };
-}
-
-// ── Property Form Dialog ───────────────────────────────────────────────────────
-interface PropertyFormProps {
-  initial: Property;
-  onSave: (p: Property) => void;
-  onClose: () => void;
-  title: string;
-}
-
-function PropertyForm({ initial, onSave, onClose, title }: PropertyFormProps) {
-  const [form, setForm] = useState<Property>({ ...initial });
-
-  function set(field: keyof Property, val: unknown) {
-    setForm((f: Property) => ({ ...f, [field]: val }));
-  }
-
-  function save() {
-    if (!form.name.trim()) { toast.error("Property name is required"); return; }
-    if (!form.entity_name.trim()) { toast.error("Entity name is required"); return; }
-    onSave(form);
-    toast.success("Property saved");
-    onClose();
-  }
-
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Property Name *</label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Arbor Crest" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Entity Name *</label>
-            <Input value={form.entity_name} onChange={(e) => set("entity_name", e.target.value)} placeholder="e.g. Arbor Crest Housing, LP" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">EIN</label>
-            <Input value={form.entity_ein} onChange={(e) => set("entity_ein", e.target.value)} placeholder="e.g. 82-3335281" />
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_mt"
-              checked={!!form.isGrovePark}
-              onChange={(e) => set("isGrovePark", e.target.checked)}
-              className="rounded"
-            />
-            <label htmlFor="is_mt" className="text-sm text-slate-700">MT Structure (Grove Park)</label>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={save}>Save Property</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Investor Form Dialog ───────────────────────────────────────────────────────
-interface InvestorFormProps {
-  initial: Investor;
-  onSave: (inv: Investor) => void;
-  onClose: () => void;
-  title: string;
-}
-
-function InvestorForm({ initial, onSave, onClose, title }: InvestorFormProps) {
-  const [form, setForm] = useState<Investor>({ ...initial });
-
-  function set(field: keyof Investor, val: unknown) {
-    setForm((f: Investor) => ({ ...f, [field]: val }));
-  }
-
-  function save() {
-    if (!form.name.trim()) { toast.error("Investor name is required"); return; }
-    onSave(form);
-    toast.success("Investor saved");
-    onClose();
-  }
-
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Entity / Investor Name *</label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Marc Menowitz" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">% Capital</label>
-            <Input
-              type="number"
-              step="0.0001"
-              min="0"
-              max="100"
-              value={form.pct_capital ?? ""}
-              onChange={(e) => set("pct_capital", e.target.value === "" ? null : parseFloat(e.target.value))}
-              placeholder="e.g. 25.0000"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Email</label>
-            <Input type="email" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="investor@example.com" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Note <span className="text-slate-400 font-normal">(shown next to name)</span></label>
-            <Input value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} placeholder="Add a note..." />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={save}>Save Investor</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Property Row ───────────────────────────────────────────────────────────────
-interface PropertyRowProps {
-  property: Property;
-  onEdit: () => void;
-  onDelete: () => void;
-  onAddInvestor: () => void;
-  onEditInvestor: (idx: number) => void;
-  onDeleteInvestor: (idx: number) => void;
-}
-
-function PropertyRow({ property, onEdit, onDelete, onAddInvestor, onEditInvestor, onDeleteInvestor }: PropertyRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [deleteInvIdx, setDeleteInvIdx] = useState<number | null>(null);
-
-  return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
-      {/* Property header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 transition-colors">
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-slate-400 hover:text-slate-600 transition-colors"
-        >
-          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-900 text-sm">{property.name}</span>
-            {property.isGrovePark && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-xs">MT</Badge>}
-          </div>
-          <p className="text-xs text-slate-500 truncate">{property.entity_name} · EIN {property.entity_ein || "—"}</p>
-        </div>
-        <span className="text-xs text-slate-400 mr-2">
-          <Users className="w-3.5 h-3.5 inline mr-1" />{property.investors.length}
-        </span>
-        <div className="flex items-center gap-1">
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500 hover:text-blue-600" onClick={onEdit}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-500 hover:text-red-500" onClick={onDelete}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Investor list */}
-      {expanded && (
-        <div className="border-t border-slate-100 bg-slate-50">
-          {property.investors.length === 0 ? (
-            <p className="text-xs text-slate-400 px-10 py-3">No investors yet.</p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left px-10 py-2 font-medium text-slate-500">% Capital</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-500">Entity (Owner)</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-500">Note</th>
-                  <th className="text-left px-3 py-2 font-medium text-slate-500">Email</th>
-                  <th className="w-16" />
-                </tr>
-              </thead>
-              <tbody>
-                {property.investors.map((inv: Investor, idx: number) => (
-                  <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-white transition-colors">
-                    <td className="px-10 py-2 font-mono text-slate-600">
-                      {inv.pct_capital !== null ? `${inv.pct_capital.toFixed(4)}%` : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-slate-800 font-medium">{inv.name}</td>
-                    <td className="px-3 py-2 text-slate-500 italic">{inv.notes || <span className="text-slate-300 not-italic">—</span>}</td>
-                    <td className="px-3 py-2 text-slate-500">{inv.email || "—"}</td>
-                    <td className="px-2 py-1">
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-slate-400 hover:text-blue-600" onClick={() => onEditInvestor(idx)}>
-                          <Pencil className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-slate-400 hover:text-red-500" onClick={() => setDeleteInvIdx(idx)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <div className="px-10 py-2">
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={onAddInvestor}>
-              <Plus className="w-3 h-3" /> Add Investor
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Delete investor confirm */}
-      {deleteInvIdx !== null && (
-        <AlertDialog open onOpenChange={() => setDeleteInvIdx(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Remove Investor?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently remove <strong>{property.investors[deleteInvIdx]?.name}</strong> from {property.name}.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => { onDeleteInvestor(deleteInvIdx); setDeleteInvIdx(null); }}>
-                Remove
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </div>
-  );
-}
-
-// ── Main Settings Page ─────────────────────────────────────────────────────────
 export default function Settings() {
-  const {
-    isAuthed, logout, properties,
-    addProperty, updateProperty, deleteProperty,
-    addInvestor, updateInvestor, deleteInvestor,
-    resetToSeed,
-  } = useAdmin();
-
-  const [tab, setTab] = useState<"investors" | "properties">("investors");
+  const [unlocked, setUnlocked] = useState(false);
+  const [tab, setTab] = useState<AdminTab>("investors");
   const [search, setSearch] = useState("");
-  const [addPropOpen, setAddPropOpen] = useState(false);
-  const [editProp, setEditProp] = useState<Property | null>(null);
-  const [deletePropId, setDeletePropId] = useState<string | null>(null);
-  const [addInvPropId, setAddInvPropId] = useState<string | null>(null);
-  const [editInv, setEditInv] = useState<{ propId: string; idx: number; inv: Investor } | null>(null);
-  const [resetConfirm, setResetConfirm] = useState(false);
-  const [deleteInvGlobal, setDeleteInvGlobal] = useState<{ propId: string; idx: number; name: string } | null>(null);
-  const [invSort, setInvSort] = useState<"asc" | "desc" | null>(null);
-  const [expandedInvestors, setExpandedInvestors] = useState<Set<string>>(new Set());
-  const toggleInvestor = (name: string) => setExpandedInvestors(prev => {
-    const next = new Set(prev);
-    next.has(name) ? next.delete(name) : next.add(name);
-    return next;
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+  const [expandedInvestors, setExpandedInvestors] = useState<Set<number>>(new Set());
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const utils = trpc.useUtils();
+
+  // Data
+  const { data: investors, isLoading: invLoading } = trpc.investors.list.useQuery({});
+  const { data: properties, isLoading: propLoading } = trpc.properties.list.useQuery({});
+
+  // Mutations
+  const updateStatus = trpc.investors.updateStatus.useMutation({
+    onSuccess: () => { utils.investors.list.invalidate(); toast.success("Status updated"); },
+    onError: () => toast.error("Failed to update status"),
+  });
+  const deleteInvestorMut = trpc.investors.delete.useMutation({
+    onSuccess: () => { utils.investors.list.invalidate(); toast.success("Investor deleted"); },
+    onError: () => toast.error("Failed to delete investor"),
+  });
+  const deletePropertyMut = trpc.properties.delete.useMutation({
+    onSuccess: () => { utils.properties.list.invalidate(); toast.success("Property deleted"); },
+    onError: () => toast.error("Failed to delete property"),
   });
 
-  if (!isAuthed) return <PinLock />;
+  // Edit investor dialog
+  const [editInv, setEditInv] = useState<{ id: number; name: string; email: string; phone: string } | null>(null);
+  const updateInfo = trpc.investors.updateInfo.useMutation({
+    onSuccess: () => { utils.investors.list.invalidate(); setEditInv(null); toast.success("Investor updated"); },
+    onError: () => toast.error("Failed to update investor"),
+  });
 
-  const filtered = properties.filter((p) => {
+  // Add investor dialog
+  const [addInvOpen, setAddInvOpen] = useState(false);
+  const [newInv, setNewInv] = useState({ name: "", email: "", phone: "" });
+  const createInvestor = trpc.investors.create.useMutation({
+    onSuccess: () => { utils.investors.list.invalidate(); setAddInvOpen(false); setNewInv({ name: "", email: "", phone: "" }); toast.success("Investor added"); },
+    onError: () => toast.error("Failed to add investor"),
+  });
+
+  // Delete confirmation
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "investor" | "property"; id: number | string; name: string } | null>(null);
+
+  // CSV Import dialog
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const importCsv = trpc.distributions.importCsv.useMutation({
+    onSuccess: (r) => { setCsvOpen(false); setCsvText(""); toast.success(`Imported ${r.imported} distributions`); },
+    onError: () => toast.error("CSV import failed"),
+  });
+
+  if (!unlocked) return <PinLock onUnlock={() => setUnlocked(true)} />;
+
+  // Sort + filter investors
+  const filteredInvestors = useMemo(() => {
+    if (!investors) return [];
+    let list = [...investors];
     const q = search.toLowerCase();
-    return (
-      !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.entity_name.toLowerCase().includes(q) ||
-      p.entity_ein.includes(q) ||
-      p.investors.some((i) => i.name.toLowerCase().includes(q))
+    if (q) list = list.filter((i) => i.name.toLowerCase().includes(q) || (i.email ?? "").toLowerCase().includes(q));
+    if (sortDir === "asc") list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortDir === "desc") list.sort((a, b) => b.name.localeCompare(a.name));
+    return list;
+  }, [investors, search, sortDir]);
+
+  const filteredProperties = useMemo(() => {
+    if (!properties) return [];
+    const q = search.toLowerCase();
+    if (!q) return properties;
+    return properties.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.entityName.toLowerCase().includes(q) || (p.entityEin ?? "").includes(q)
     );
-  });
+  }, [properties, search]);
+
+  function toggleSort() {
+    setSortDir((d) => d === null ? "asc" : d === "asc" ? "desc" : null);
+  }
+
+  function toggleExpand(id: number) {
+    setExpandedInvestors((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function handleCsvImport() {
+    const lines = csvText.trim().split("\n").slice(1); // skip header
+    const rows: any[] = [];
+    for (const line of lines) {
+      const [propertyId, investorId, year, amount, type, notes] = line.split(",").map((s) => s.trim());
+      if (!propertyId || !investorId || !year || !amount) continue;
+      rows.push({
+        propertyId,
+        investorId: parseInt(investorId),
+        year: parseInt(year),
+        amount,
+        type: (type || "k1") as any,
+        notes: notes || null,
+      });
+    }
+    if (rows.length === 0) { toast.error("No valid rows found in CSV"); return; }
+    importCsv.mutate({ rows });
+  }
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -412,317 +247,370 @@ export default function Settings() {
               <Settings2 className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Admin Settings</h1>
-              <p className="text-xs text-slate-500">Edit properties and investor data</p>
+              <h1 className="text-2xl font-bold text-slate-900">Admin Settings</h1>
+              <p className="text-sm text-slate-500">Manage investors, properties, and distributions</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-slate-500 gap-1.5 text-xs"
-              onClick={() => setResetConfirm(true)}
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset to Original
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-slate-500 gap-1.5 text-xs"
-              onClick={logout}
-            >
-              <LogOut className="w-3.5 h-3.5" /> Lock
+            {tab === "investors" && isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                Import CSV
+              </Button>
+            )}
+            {tab === "investors" && isAdmin && (
+              <Button size="sm" onClick={() => setAddInvOpen(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Investor
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={() => setUnlocked(false)}>
+              <LogOut className="w-3.5 h-3.5 mr-1.5" />
+              Lock
             </Button>
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-blue-600" />
-            <div>
-              <p className="text-xs text-blue-600 font-medium">Properties</p>
-              <p className="text-xl font-bold text-blue-700">{properties.length}</p>
-            </div>
-          </div>
-          <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center gap-3">
-            <Users className="w-5 h-5 text-slate-500" />
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Total Investors</p>
-              <p className="text-xl font-bold text-slate-700">
-                {properties.reduce((s, p) => s + p.investors.length, 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tab toggle */}
+        {/* Tabs */}
         <div className="flex gap-1 mb-5 border-b border-slate-200">
-          {(["investors", "properties"] as const).map((t) => (
+          {(["investors", "properties"] as AdminTab[]).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setSearch(""); }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors duration-100
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors
                 ${tab === t ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
             >
-              {t === "investors" ? <Users className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+              {t === "investors" ? <Users className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
               {t.charAt(0).toUpperCase() + t.slice(1)}
               <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-mono">
-                {t === "investors" ? properties.reduce((s, p) => s + p.investors.length, 0) : properties.length}
+                {t === "investors" ? (investors?.length ?? 0) : (properties?.length ?? 0)}
               </span>
             </button>
           ))}
         </div>
 
-        {/* Search + action toolbar */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              className="pl-9 text-sm"
-              placeholder={tab === "investors" ? "Search investors..." : "Search properties..."}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          {tab === "properties" && (
-            <Button className="gap-1.5 text-sm" onClick={() => setAddPropOpen(true)}>
-              <Plus className="w-4 h-4" /> Add Property
-            </Button>
-          )}
+        {/* Search bar */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder={tab === "investors" ? "Search investors…" : "Search properties…"}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
-        {/* Investors tab — grouped by unique investor name, expandable rows */}
-        {tab === "investors" && (() => {
-          const q = search.toLowerCase();
-          // Build all rows
-          const rows: { propId: string; propName: string; idx: number; inv: Investor }[] = [];
-          properties.forEach((p) => p.investors.forEach((inv, idx) => rows.push({ propId: p.id, propName: p.name, idx, inv })));
-          const filtered2 = rows.filter(r => !q || r.inv.name.toLowerCase().includes(q) || r.propName.toLowerCase().includes(q));
-          // Group by investor name
-          const grouped = new Map<string, typeof filtered2>();
-          filtered2.forEach(r => {
-            if (!grouped.has(r.inv.name)) grouped.set(r.inv.name, []);
-            grouped.get(r.inv.name)!.push(r);
-          });
-          // Sort group keys
-          let names = Array.from(grouped.keys());
-          if (invSort === "asc") names = names.sort((a, b) => a.localeCompare(b));
-          else if (invSort === "desc") names = names.sort((a, b) => b.localeCompare(a));
-          return (
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              {names.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-10">No investors match your search.</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th
-                        className="text-left px-4 py-2.5 font-semibold text-slate-600 cursor-pointer select-none hover:text-blue-600 transition-colors"
-                        onClick={() => setInvSort(s => s === "asc" ? "desc" : "asc")}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          Entity (Owner)
-                          <span className="text-xs text-slate-400">{invSort === "asc" ? "▲" : invSort === "desc" ? "▼" : "⇅"}</span>
-                        </span>
-                      </th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Properties</th>
-                      <th className="w-10" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {names.map((name, gi) => {
-                      const entries = grouped.get(name)!;
-                      const isOpen = expandedInvestors.has(name);
-                      return (
-                        <>
-                          {/* Group header row — click to expand */}
-                          <tr
-                            key={`g-${name}`}
-                            className={`border-b border-slate-100 cursor-pointer ${gi % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/40 transition-colors`}
-                            onClick={() => toggleInvestor(name)}
-                          >
-                            <td className="px-4 py-3 font-bold text-slate-900">
-                              <span className="inline-flex items-center gap-2">
-                                <span className="text-slate-400 text-xs">{isOpen ? "▼" : "▶"}</span>
-                                {name}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-slate-500 text-xs">
-                              {entries.length === 1 ? entries[0].propName : `${entries.length} properties`}
-                            </td>
-                            <td />
-                          </tr>
-                          {/* Expanded detail rows */}
-                          {isOpen && (
-                            <>
-                              {entries.map((r, i) => (
-                                <tr key={`${name}-${i}`} className="border-b border-slate-100 bg-blue-50/20">
-                                  <td className="pl-10 pr-4 py-2 text-slate-500 text-xs italic">{r.propName}</td>
-                                  <td className="px-4 py-2">
-                                    <div className="flex items-center gap-3">
-                                      <span className="font-mono font-semibold text-xs" style={{color:'#16a34a'}}>
-                                        {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
-                                      </span>
-                                      {r.inv.notes && <span className="text-slate-400 italic text-xs">{r.inv.notes}</span>}
-                                    </div>
-                                  </td>
-                                  <td className="px-2 py-2">
-                                    <div className="flex gap-1 justify-end">
-                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-blue-600"
-                                        onClick={(e) => { e.stopPropagation(); setEditInv({ propId: r.propId, idx: r.idx, inv: r.inv }); }}>
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </Button>
-                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-500"
-                                        onClick={(e) => { e.stopPropagation(); setDeleteInvGlobal({ propId: r.propId, idx: r.idx, name: r.inv.name }); }}>
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </Button>
-                                    </div>
-                                  </td>
-                                </tr>
+        {/* ── INVESTORS TAB ── */}
+        {tab === "investors" && (
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="w-8 px-3 py-2.5" />
+                  <th className="text-left px-4 py-2.5">
+                    <button
+                      onClick={toggleSort}
+                      className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wide hover:text-blue-600 transition-colors"
+                    >
+                      Entity (Owner)
+                      {sortDir === null && <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
+                      {sortDir === "asc" && <ArrowUp className="w-3.5 h-3.5 text-blue-600" />}
+                      {sortDir === "desc" && <ArrowDown className="w-3.5 h-3.5 text-blue-600" />}
+                    </button>
+                  </th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden sm:table-cell">Email</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Status</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Props</th>
+                  <th className="px-3 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {invLoading && (
+                  <tr><td colSpan={6} className="py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Loading…</td></tr>
+                )}
+                {!invLoading && filteredInvestors.map((inv) => {
+                  const expanded = expandedInvestors.has(inv.id);
+                  const badge = STATUS_OPTIONS.find((s) => s.value === inv.status) ?? STATUS_OPTIONS[0];
+                  return (
+                    <>
+                      <tr key={inv.id} className="bg-white hover:bg-slate-50/50 transition-colors">
+                        <td className="px-3 py-3">
+                          <button onClick={() => toggleExpand(inv.id)} className="text-slate-400 hover:text-slate-600">
+                            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link href={`/investor/${inv.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors">
+                            {inv.name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 hidden sm:table-cell truncate max-w-xs">{inv.email ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          {isAdmin ? (
+                            <select
+                              value={inv.status}
+                              onChange={(e) => updateStatus.mutate({ id: inv.id, status: e.target.value as any })}
+                              className={`text-xs px-2 py-1 rounded border font-medium cursor-pointer ${badge.cls}`}
+                            >
+                              {STATUS_OPTIONS.map((s) => (
+                                <option key={s.value} value={s.value}>{s.label}</option>
                               ))}
-                              {/* Total row */}
-                              <tr className="border-b border-slate-200 bg-blue-50/40">
-                                <td className="pl-10 pr-4 py-2 text-xs font-bold text-slate-600 uppercase tracking-wide">Total</td>
-                                <td className="px-4 py-2">
-                                  <span className="font-mono font-bold text-sm" style={{color:'#16a34a'}}>
-                                    {entries.reduce((sum, r) => sum + (r.inv.pct_capital ?? 0), 0).toFixed(4)}%
-                                  </span>
-                                </td>
-                                <td />
-                              </tr>
-                            </>
+                            </select>
+                          ) : (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs border ${badge.cls}`}>{badge.label}</span>
                           )}
-                        </>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          );
-        })()}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-slate-600">{Number(inv.propertyCount)}</td>
+                        <td className="px-3 py-3 text-right">
+                          {isAdmin && (
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: "" })}
+                                className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete({ type: "investor", id: inv.id, name: inv.name })}
+                                className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr key={`${inv.id}-exp`} className="bg-blue-50/30">
+                          <td colSpan={6} className="px-8 py-3">
+                            <InvestorExpandedRow investorId={inv.id} />
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* Properties tab */}
+        {/* ── PROPERTIES TAB ── */}
         {tab === "properties" && (
-          <div className="space-y-2">
-            {filtered.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-10">No properties match your search.</p>
-            )}
-            {filtered.map((prop) => (
-              <PropertyRow
-                key={prop.id}
-                property={prop}
-                onEdit={() => setEditProp(prop)}
-                onDelete={() => setDeletePropId(prop.id)}
-                onAddInvestor={() => setAddInvPropId(prop.id)}
-                onEditInvestor={(idx) => setEditInv({ propId: prop.id, idx, inv: prop.investors[idx] })}
-                onDeleteInvestor={(idx) => deleteInvestor(prop.id, idx)}
-              />
-            ))}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="text-left px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Property</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden sm:table-cell">Entity</th>
+                  <th className="text-center px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden sm:table-cell">EIN</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Investors</th>
+                  <th className="px-3 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {propLoading && (
+                  <tr><td colSpan={5} className="py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Loading…</td></tr>
+                )}
+                {!propLoading && filteredProperties.map((prop, idx) => (
+                  <tr key={prop.id} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                    <td className="px-5 py-3">
+                      <Link href={`/property/${prop.id}`} className="font-semibold text-slate-900 hover:text-blue-600 transition-colors">
+                        {prop.name}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3 text-slate-500 hidden sm:table-cell truncate max-w-xs">{prop.entityName}</td>
+                    <td className="px-5 py-3 text-center hidden sm:table-cell">
+                      <span className="font-mono font-bold text-blue-700 text-xs">EIN {prop.entityEin || "—"}</span>
+                    </td>
+                    <td className="px-5 py-3 text-right font-mono text-slate-600">{Number(prop.investorCount)}</td>
+                    <td className="px-3 py-3 text-right">
+                      {isAdmin && (
+                        <button
+                          onClick={() => setConfirmDelete({ type: "property", id: prop.id, name: prop.name })}
+                          className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* Add Property */}
-      {addPropOpen && (
-        <PropertyForm
-          initial={blankProperty()}
-          title="Add Property"
-          onSave={(p) => addProperty(p)}
-          onClose={() => setAddPropOpen(false)}
-        />
-      )}
+      {/* Edit Investor Dialog */}
+      <Dialog open={!!editInv} onOpenChange={(o) => !o && setEditInv(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Investor</DialogTitle>
+          </DialogHeader>
+          {editInv && (
+            <div className="space-y-3 py-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Name</label>
+                <Input value={editInv.name} onChange={(e) => setEditInv({ ...editInv, name: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Email</label>
+                <Input value={editInv.email} onChange={(e) => setEditInv({ ...editInv, email: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Phone</label>
+                <Input value={editInv.phone} onChange={(e) => setEditInv({ ...editInv, phone: e.target.value })} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditInv(null)}>Cancel</Button>
+            <Button
+              onClick={() => editInv && updateInfo.mutate({ id: editInv.id, name: editInv.name, email: editInv.email || null, phone: editInv.phone || null })}
+              disabled={updateInfo.isPending}
+            >
+              {updateInfo.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit Property */}
-      {editProp && (
-        <PropertyForm
-          initial={editProp}
-          title="Edit Property"
-          onSave={(p) => updateProperty(editProp.id, p)}
-          onClose={() => setEditProp(null)}
-        />
-      )}
+      {/* Add Investor Dialog */}
+      <Dialog open={addInvOpen} onOpenChange={setAddInvOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Investor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Name *</label>
+              <Input value={newInv.name} onChange={(e) => setNewInv({ ...newInv, name: e.target.value })} placeholder="Investor name" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Email</label>
+              <Input value={newInv.email} onChange={(e) => setNewInv({ ...newInv, email: e.target.value })} placeholder="email@example.com" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Phone</label>
+              <Input value={newInv.phone} onChange={(e) => setNewInv({ ...newInv, phone: e.target.value })} placeholder="(555) 000-0000" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddInvOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => createInvestor.mutate({ name: newInv.name, email: newInv.email || null, phone: newInv.phone || null })}
+              disabled={!newInv.name.trim() || createInvestor.isPending}
+            >
+              {createInvestor.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Delete Property confirm */}
-      {deletePropId && (
-        <AlertDialog open onOpenChange={() => setDeletePropId(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Property?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete <strong>{properties.find((p) => p.id === deletePropId)?.name}</strong> and all its investor records.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => { deleteProperty(deletePropId); setDeletePropId(null); toast.success("Property deleted"); }}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      {/* CSV Import Dialog */}
+      <Dialog open={csvOpen} onOpenChange={setCsvOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Distributions (CSV)</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-xs text-slate-500 mb-2">
+              Paste CSV with header row: <code className="bg-slate-100 px-1 rounded">property_id,investor_id,year,amount,type,notes</code>
+            </p>
+            <p className="text-xs text-slate-400 mb-3">
+              Types: <code className="bg-slate-100 px-1 rounded">k1</code>, <code className="bg-slate-100 px-1 rounded">cash</code>, <code className="bg-slate-100 px-1 rounded">return_of_capital</code>, <code className="bg-slate-100 px-1 rounded">other</code>
+            </p>
+            <textarea
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+              rows={8}
+              placeholder={"property_id,investor_id,year,amount,type,notes\ngrove-park,1,2023,5000.00,k1,Annual K-1"}
+              className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCsvOpen(false)}>Cancel</Button>
+            <Button onClick={handleCsvImport} disabled={!csvText.trim() || importCsv.isPending}>
+              {importCsv.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Upload className="w-4 h-4 mr-1" />}
+              Import
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Add Investor */}
-      {addInvPropId && (
-        <InvestorForm
-          initial={blankInvestor()}
-          title={`Add Investor — ${properties.find((p) => p.id === addInvPropId)?.name}`}
-          onSave={(inv) => addInvestor(addInvPropId, inv)}
-          onClose={() => setAddInvPropId(null)}
-        />
-      )}
-
-      {/* Edit Investor */}
-      {editInv && (
-        <InvestorForm
-          initial={editInv.inv}
-          title="Edit Investor"
-          onSave={(inv) => updateInvestor(editInv.propId, editInv.idx, inv)}
-          onClose={() => setEditInv(null)}
-        />
-      )}
-
-      {/* Reset confirm */}
-      {/* Delete Investor (from global investors tab) */}
-      {deleteInvGlobal && (
-        <AlertDialog open onOpenChange={() => setDeleteInvGlobal(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Remove Investor?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Remove <strong>{deleteInvGlobal.name}</strong> from this property? This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => { deleteInvestor(deleteInvGlobal.propId, deleteInvGlobal.idx); setDeleteInvGlobal(null); toast.success("Investor removed"); }}>
-                Remove
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
-      {resetConfirm && (
-        <AlertDialog open onOpenChange={() => setResetConfirm(false)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset to Original Data?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will discard all edits and restore the original investor data from the spreadsheet. This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => { resetToSeed(); setResetConfirm(false); toast.success("Data reset to original"); }}>
-                Reset
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {confirmDelete?.type === "investor" ? "Investor" : "Property"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{confirmDelete?.name}</strong> and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (!confirmDelete) return;
+                if (confirmDelete.type === "investor") {
+                  deleteInvestorMut.mutate({ id: confirmDelete.id as number });
+                } else {
+                  deletePropertyMut.mutate({ id: confirmDelete.id as string });
+                }
+                setConfirmDelete(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
+  );
+}
+
+// ── Expanded investor row: shows all properties with % Capital ─────────────────
+function InvestorExpandedRow({ investorId }: { investorId: number }) {
+  const { data: investor } = trpc.investors.getById.useQuery({ id: investorId });
+
+  if (!investor) return <div className="text-xs text-slate-400 py-2">Loading…</div>;
+
+  const total = investor.properties.reduce((s, p) => s + parseFloat(p.pctCapital ?? "0"), 0);
+
+  return (
+    <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="bg-slate-50 border-b border-slate-100">
+            <th className="text-left px-4 py-2 font-bold text-slate-500 uppercase tracking-wide">Property</th>
+            <th className="text-right px-4 py-2 font-bold text-slate-500 uppercase tracking-wide w-28">% Capital</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {investor.properties.map((p) => (
+            <tr key={p.propertyId} className="bg-white">
+              <td className="px-4 py-2 text-slate-700">{p.propertyName}</td>
+              <td className="px-4 py-2 text-right font-mono font-semibold" style={{ color: "#16a34a" }}>
+                {parseFloat(p.pctCapital ?? "0").toFixed(4)}%
+              </td>
+            </tr>
+          ))}
+          <tr className="bg-slate-50 border-t border-slate-200">
+            <td className="px-4 py-2 font-bold text-slate-700">Total</td>
+            <td className="px-4 py-2 text-right font-mono font-bold" style={{ color: "#16a34a" }}>
+              {total.toFixed(4)}%
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
