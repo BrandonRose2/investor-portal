@@ -169,10 +169,9 @@ export default function Home() {
                       <div className="text-sm text-slate-500 truncate mt-0.5">{prop.entity_name}</div>
                     </div>
 
-                    {/* EIN — fixed-width centered column so all numbers align */}
-                    <div className="hidden sm:flex flex-col items-center justify-center">
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">EIN</div>
-                      <div className="font-mono font-bold text-blue-700 text-sm" style={{fontVariantNumeric:'tabular-nums', letterSpacing:'0.03em'}}>{prop.entity_ein || '—'}</div>
+                    {/* EIN — single centered line */}
+                    <div className="hidden sm:flex items-center justify-center">
+                      <span className="font-mono font-bold text-blue-700 text-sm" style={{fontVariantNumeric:'tabular-nums', letterSpacing:'0.03em'}}>EIN {prop.entity_ein || '—'}</span>
                     </div>
 
                     {/* Investor count */}
