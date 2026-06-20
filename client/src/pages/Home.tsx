@@ -10,6 +10,27 @@ const INVESTOR_INDEX = buildInvestorIndex();
 
 type Tab = "properties" | "investors";
 
+const AVATAR_COLORS = [
+  { bg: "bg-blue-100", text: "text-blue-700" },
+  { bg: "bg-emerald-100", text: "text-emerald-700" },
+  { bg: "bg-violet-100", text: "text-violet-700" },
+  { bg: "bg-amber-100", text: "text-amber-700" },
+  { bg: "bg-rose-100", text: "text-rose-700" },
+  { bg: "bg-cyan-100", text: "text-cyan-700" },
+  { bg: "bg-orange-100", text: "text-orange-700" },
+  { bg: "bg-teal-100", text: "text-teal-700" },
+  { bg: "bg-indigo-100", text: "text-indigo-700" },
+  { bg: "bg-pink-100", text: "text-pink-700" },
+  { bg: "bg-lime-100", text: "text-lime-700" },
+  { bg: "bg-sky-100", text: "text-sky-700" },
+];
+
+function avatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -180,9 +201,11 @@ export default function Home() {
               <Link key={inv.name} href={`/investor/${encodeURIComponent(inv.name)}`}>
                 <div className="block group flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
                     {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                    {(() => { const c = avatarColor(inv.name); return (
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${c.bg} ${c.text}`}>
                       {initials(inv.name)}
                     </div>
+                    ); })()}
 
                     {/* Name */}
                     <div className="flex-1 min-w-0">
