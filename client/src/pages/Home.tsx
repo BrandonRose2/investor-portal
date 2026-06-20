@@ -102,7 +102,7 @@ export default function Home() {
           {(["properties", "investors"] as Tab[]).map((t) => (
             <button
               key={t}
-              onClick={() => navigate(`/directory?tab=${t}`)}
+              onClick={() => navigate(`/?tab=${t}`)}
               className={`
                 flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors duration-100
                 ${tab === t
