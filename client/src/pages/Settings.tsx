@@ -372,6 +372,7 @@ export default function Settings() {
     resetToSeed,
   } = useAdmin();
 
+  const [tab, setTab] = useState<"investors" | "properties">("investors");
   const [search, setSearch] = useState("");
   const [addPropOpen, setAddPropOpen] = useState(false);
   const [editProp, setEditProp] = useState<Property | null>(null);
@@ -379,6 +380,7 @@ export default function Settings() {
   const [addInvPropId, setAddInvPropId] = useState<string | null>(null);
   const [editInv, setEditInv] = useState<{ propId: string; idx: number; inv: Investor } | null>(null);
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [deleteInvGlobal, setDeleteInvGlobal] = useState<{ propId: string; idx: number; name: string } | null>(null);
 
   if (!isAuthed) return <PinLock />;
 
@@ -447,39 +449,112 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Tab toggle */}
+        <div className="flex gap-1 mb-5 border-b border-slate-200">
+          {(["investors", "properties"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setSearch(""); }}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors duration-100
+                ${tab === t ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
+            >
+              {t === "investors" ? <Users className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+              <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-mono">
+                {t === "investors" ? properties.reduce((s, p) => s + p.investors.length, 0) : properties.length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search + action toolbar */}
         <div className="flex items-center gap-3 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               className="pl-9 text-sm"
-              placeholder="Search properties or investors..."
+              placeholder={tab === "investors" ? "Search investors..." : "Search properties..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Button className="gap-1.5 text-sm" onClick={() => setAddPropOpen(true)}>
-            <Plus className="w-4 h-4" /> Add Property
-          </Button>
+          {tab === "properties" && (
+            <Button className="gap-1.5 text-sm" onClick={() => setAddPropOpen(true)}>
+              <Plus className="w-4 h-4" /> Add Property
+            </Button>
+          )}
         </div>
 
-        {/* Property list */}
-        <div className="space-y-2">
-          {filtered.length === 0 && (
-            <p className="text-sm text-slate-400 text-center py-10">No properties match your search.</p>
-          )}
-          {filtered.map((prop) => (
-            <PropertyRow
-              key={prop.id}
-              property={prop}
-              onEdit={() => setEditProp(prop)}
-              onDelete={() => setDeletePropId(prop.id)}
-              onAddInvestor={() => setAddInvPropId(prop.id)}
-              onEditInvestor={(idx) => setEditInv({ propId: prop.id, idx, inv: prop.investors[idx] })}
-              onDeleteInvestor={(idx) => deleteInvestor(prop.id, idx)}
-            />
-          ))}
-        </div>
+        {/* Investors tab — flat list of all investors across all properties */}
+        {tab === "investors" && (() => {
+          const q = search.toLowerCase();
+          const rows: { propId: string; propName: string; idx: number; inv: Investor }[] = [];
+          properties.forEach((p) => p.investors.forEach((inv, idx) => rows.push({ propId: p.id, propName: p.name, idx, inv })));
+          const filtered2 = rows.filter(r => !q || r.inv.name.toLowerCase().includes(q) || r.propName.toLowerCase().includes(q));
+          return (
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              {filtered2.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">No investors match your search.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Entity (Owner)</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Property</th>
+                      <th className="text-right px-4 py-2.5 font-semibold text-slate-600">% Capital</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Note</th>
+                      <th className="w-20" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered2.map((r, i) => (
+                      <tr key={i} className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
+                        <td className="px-4 py-2.5 font-semibold text-slate-900">{r.inv.name}</td>
+                        <td className="px-4 py-2.5 text-slate-500 text-xs">{r.propName}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-slate-700">
+                          {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-400 italic text-xs">{r.inv.notes || "—"}</td>
+                        <td className="px-2 py-2">
+                          <div className="flex gap-1 justify-end">
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-blue-600"
+                              onClick={() => setEditInv({ propId: r.propId, idx: r.idx, inv: r.inv })}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-500"
+                              onClick={() => setDeleteInvGlobal({ propId: r.propId, idx: r.idx, name: r.inv.name })}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Properties tab */}
+        {tab === "properties" && (
+          <div className="space-y-2">
+            {filtered.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-10">No properties match your search.</p>
+            )}
+            {filtered.map((prop) => (
+              <PropertyRow
+                key={prop.id}
+                property={prop}
+                onEdit={() => setEditProp(prop)}
+                onDelete={() => setDeletePropId(prop.id)}
+                onAddInvestor={() => setAddInvPropId(prop.id)}
+                onEditInvestor={(idx) => setEditInv({ propId: prop.id, idx, inv: prop.investors[idx] })}
+                onDeleteInvestor={(idx) => deleteInvestor(prop.id, idx)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Add Property */}
@@ -543,6 +618,26 @@ export default function Settings() {
       )}
 
       {/* Reset confirm */}
+      {/* Delete Investor (from global investors tab) */}
+      {deleteInvGlobal && (
+        <AlertDialog open onOpenChange={() => setDeleteInvGlobal(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Investor?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Remove <strong>{deleteInvGlobal.name}</strong> from this property? This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => { deleteInvestor(deleteInvGlobal.propId, deleteInvGlobal.idx); setDeleteInvGlobal(null); toast.success("Investor removed"); }}>
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       {resetConfirm && (
         <AlertDialog open onOpenChange={() => setResetConfirm(false)}>
           <AlertDialogContent>
