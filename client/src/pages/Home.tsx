@@ -149,9 +149,9 @@ export default function Home() {
                     </div>
 
                     {/* EIN */}
-                    <div className="hidden sm:block shrink-0 w-36 text-right">
-                      <span className="text-xs font-semibold text-slate-400 tracking-wide">EIN </span>
-                      <span className="font-mono font-bold text-slate-700 text-sm tabular-nums">{prop.entity_ein || '—'}</span>
+                    <div className="hidden sm:block shrink-0" style={{width: '9.5rem', textAlign: 'right'}}>
+                      <span className="text-xs font-semibold text-slate-400 tracking-wide uppercase">EIN&#8194;</span>
+                      <span className="font-mono font-bold text-slate-700 text-sm" style={{fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em', display: 'inline-block', minWidth: '6.5rem', textAlign: 'left'}}>{prop.entity_ein || '—'}</span>
                     </div>
 
                     {/* Investor count */}
