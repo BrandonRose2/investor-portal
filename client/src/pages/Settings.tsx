@@ -554,31 +554,45 @@ export default function Settings() {
                             <td />
                           </tr>
                           {/* Expanded detail rows */}
-                          {isOpen && entries.map((r, i) => (
-                            <tr key={`${name}-${i}`} className="border-b border-slate-100 last:border-0 bg-blue-50/20">
-                              <td className="pl-10 pr-4 py-2 text-slate-500 text-xs italic">{r.propName}</td>
-                              <td className="px-4 py-2">
-                                <div className="flex items-center gap-3">
-                                  <span className="font-mono font-semibold text-xs" style={{color:'#16a34a'}}>
-                                    {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
+                          {isOpen && (
+                            <>
+                              {entries.map((r, i) => (
+                                <tr key={`${name}-${i}`} className="border-b border-slate-100 bg-blue-50/20">
+                                  <td className="pl-10 pr-4 py-2 text-slate-500 text-xs italic">{r.propName}</td>
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center gap-3">
+                                      <span className="font-mono font-semibold text-xs" style={{color:'#16a34a'}}>
+                                        {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
+                                      </span>
+                                      {r.inv.notes && <span className="text-slate-400 italic text-xs">{r.inv.notes}</span>}
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <div className="flex gap-1 justify-end">
+                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-blue-600"
+                                        onClick={(e) => { e.stopPropagation(); setEditInv({ propId: r.propId, idx: r.idx, inv: r.inv }); }}>
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-500"
+                                        onClick={(e) => { e.stopPropagation(); setDeleteInvGlobal({ propId: r.propId, idx: r.idx, name: r.inv.name }); }}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                              {/* Total row */}
+                              <tr className="border-b border-slate-200 bg-blue-50/40">
+                                <td className="pl-10 pr-4 py-2 text-xs font-bold text-slate-600 uppercase tracking-wide">Total</td>
+                                <td className="px-4 py-2">
+                                  <span className="font-mono font-bold text-sm" style={{color:'#16a34a'}}>
+                                    {entries.reduce((sum, r) => sum + (r.inv.pct_capital ?? 0), 0).toFixed(4)}%
                                   </span>
-                                  {r.inv.notes && <span className="text-slate-400 italic text-xs">{r.inv.notes}</span>}
-                                </div>
-                              </td>
-                              <td className="px-2 py-2">
-                                <div className="flex gap-1 justify-end">
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-blue-600"
-                                    onClick={(e) => { e.stopPropagation(); setEditInv({ propId: r.propId, idx: r.idx, inv: r.inv }); }}>
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-500"
-                                    onClick={(e) => { e.stopPropagation(); setDeleteInvGlobal({ propId: r.propId, idx: r.idx, name: r.inv.name }); }}>
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                                </td>
+                                <td />
+                              </tr>
+                            </>
+                          )}
                         </>
                       );
                     })}
