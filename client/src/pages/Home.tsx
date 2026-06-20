@@ -149,8 +149,9 @@ export default function Home() {
                     </div>
 
                     {/* EIN */}
-                    <div className="hidden sm:block text-sm font-mono text-slate-400 shrink-0">
-                      EIN {prop.entity_ein}
+                    <div className="hidden sm:block shrink-0 w-36 text-right">
+                      <span className="text-xs font-semibold text-slate-400 tracking-wide">EIN </span>
+                      <span className="font-mono font-bold text-slate-700 text-sm tabular-nums">{prop.entity_ein || '—'}</span>
                     </div>
 
                     {/* Investor count */}
