@@ -92,7 +92,7 @@ export default function PropertyDetail() {
             <h2 className="text-sm font-semibold text-slate-700">Investors / Owners</h2>
             {totalPct > 0 && (
               <span className="text-xs font-mono text-slate-400">
-                Total shown: {totalPct.toFixed(3)}%
+                Total shown: {totalPct.toFixed(4)}%
               </span>
             )}
           </div>
@@ -101,9 +101,9 @@ export default function PropertyDetail() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide w-32">% Capital</th>
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Entity (Owner)</th>
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
+                  <th className="text-right px-5 py-2.5 text-sm font-bold text-slate-600 uppercase tracking-wide w-36">% Capital</th>
+                  <th className="text-left px-5 py-2.5 text-sm font-bold text-slate-600 uppercase tracking-wide">Entity (Owner)</th>
+                  <th className="text-left px-5 py-2.5 text-sm font-bold text-slate-600 uppercase tracking-wide">Email</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -111,13 +111,13 @@ export default function PropertyDetail() {
                   <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                     <td className="px-5 py-3 text-right">
                       {inv.pct_capital !== null ? (
-                        <span className="font-mono text-slate-700">{inv.pct_capital.toFixed(4)}%</span>
+                        <span className="font-mono text-base font-semibold text-slate-700">{inv.pct_capital.toFixed(4)}%</span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3">
-                      <Link href={`/investor/${encodeURIComponent(inv.name)}`} className="font-medium text-slate-900 hover:text-blue-600 transition-colors">
+                      <Link href={`/investor/${encodeURIComponent(inv.name)}`} className="text-base font-semibold text-slate-900 hover:text-blue-600 transition-colors">
                         {inv.name}
                       </Link>
                       {inv.notes && (

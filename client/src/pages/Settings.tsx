@@ -234,6 +234,10 @@ function InvestorForm({ initial, onSave, onClose, title }: InvestorFormProps) {
             <label className="text-xs font-medium text-slate-600 mb-1 block">Email</label>
             <Input type="email" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="investor@example.com" />
           </div>
+          <div>
+            <label className="text-xs font-medium text-slate-600 mb-1 block">Note <span className="text-slate-400 font-normal">(shown next to name)</span></label>
+            <Input value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. Deceased — contact Kaitlyn" />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -299,6 +303,7 @@ function PropertyRow({ property, onEdit, onDelete, onAddInvestor, onEditInvestor
                 <tr className="border-b border-slate-200">
                   <th className="text-left px-10 py-2 font-medium text-slate-500">% Capital</th>
                   <th className="text-left px-3 py-2 font-medium text-slate-500">Entity (Owner)</th>
+                  <th className="text-left px-3 py-2 font-medium text-slate-500">Note</th>
                   <th className="text-left px-3 py-2 font-medium text-slate-500">Email</th>
                   <th className="w-16" />
                 </tr>
@@ -310,6 +315,7 @@ function PropertyRow({ property, onEdit, onDelete, onAddInvestor, onEditInvestor
                       {inv.pct_capital !== null ? `${inv.pct_capital.toFixed(4)}%` : "—"}
                     </td>
                     <td className="px-3 py-2 text-slate-800 font-medium">{inv.name}</td>
+                    <td className="px-3 py-2 text-slate-500 italic">{inv.notes || <span className="text-slate-300 not-italic">—</span>}</td>
                     <td className="px-3 py-2 text-slate-500">{inv.email || "—"}</td>
                     <td className="px-2 py-1">
                       <div className="flex gap-1">

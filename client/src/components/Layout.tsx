@@ -33,9 +33,7 @@ export default function Layout({ children }: LayoutProps) {
       <Link
         key={href}
         href={href}
-        className={`
-          flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium
-          transition-colors duration-100
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-base font-semibold transition-colors duration-100
           ${active
             ? "bg-blue-50 text-blue-700"
             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -67,7 +65,7 @@ export default function Layout({ children }: LayoutProps) {
             alt="Investor Portal"
             className="w-8 h-8 rounded-md object-cover"
           />
-          <div className="text-sm font-bold text-slate-900 leading-tight">Investor Portal</div>
+          <span className="text-base font-bold text-slate-900 tracking-tight">Investor Portal</span>
         </div>
 
         {/* Main Nav */}
