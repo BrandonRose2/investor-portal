@@ -382,6 +382,12 @@ export default function Settings() {
   const [resetConfirm, setResetConfirm] = useState(false);
   const [deleteInvGlobal, setDeleteInvGlobal] = useState<{ propId: string; idx: number; name: string } | null>(null);
   const [invSort, setInvSort] = useState<"asc" | "desc" | null>(null);
+  const [expandedInvestors, setExpandedInvestors] = useState<Set<string>>(new Set());
+  const toggleInvestor = (name: string) => setExpandedInvestors(prev => {
+    const next = new Set(prev);
+    next.has(name) ? next.delete(name) : next.add(name);
+    return next;
+  });
 
   if (!isAuthed) return <PinLock />;
 
@@ -486,17 +492,26 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Investors tab — flat list of all investors across all properties */}
+        {/* Investors tab — grouped by unique investor name, expandable rows */}
         {tab === "investors" && (() => {
           const q = search.toLowerCase();
+          // Build all rows
           const rows: { propId: string; propName: string; idx: number; inv: Investor }[] = [];
           properties.forEach((p) => p.investors.forEach((inv, idx) => rows.push({ propId: p.id, propName: p.name, idx, inv })));
-          let filtered2 = rows.filter(r => !q || r.inv.name.toLowerCase().includes(q) || r.propName.toLowerCase().includes(q));
-          if (invSort === "asc") filtered2 = [...filtered2].sort((a, b) => a.inv.name.localeCompare(b.inv.name));
-          if (invSort === "desc") filtered2 = [...filtered2].sort((a, b) => b.inv.name.localeCompare(a.inv.name));
+          const filtered2 = rows.filter(r => !q || r.inv.name.toLowerCase().includes(q) || r.propName.toLowerCase().includes(q));
+          // Group by investor name
+          const grouped = new Map<string, typeof filtered2>();
+          filtered2.forEach(r => {
+            if (!grouped.has(r.inv.name)) grouped.set(r.inv.name, []);
+            grouped.get(r.inv.name)!.push(r);
+          });
+          // Sort group keys
+          let names = Array.from(grouped.keys());
+          if (invSort === "asc") names = names.sort((a, b) => a.localeCompare(b));
+          else if (invSort === "desc") names = names.sort((a, b) => b.localeCompare(a));
           return (
             <div className="border border-slate-200 rounded-xl overflow-hidden">
-              {filtered2.length === 0 ? (
+              {names.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">No investors match your search.</p>
               ) : (
                 <table className="w-full text-sm">
@@ -511,35 +526,62 @@ export default function Settings() {
                           <span className="text-xs text-slate-400">{invSort === "asc" ? "▲" : invSort === "desc" ? "▼" : "⇅"}</span>
                         </span>
                       </th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Property</th>
-                      <th className="text-right px-4 py-2.5 font-semibold text-slate-600">% Capital</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Note</th>
-                      <th className="w-20" />
+                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Properties</th>
+                      <th className="w-10" />
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered2.map((r, i) => (
-                      <tr key={i} className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
-                        <td className="px-4 py-2.5 font-semibold text-slate-900">{r.inv.name}</td>
-                        <td className="px-4 py-2.5 text-slate-500 text-xs">{r.propName}</td>
-                        <td className="px-4 py-2.5 text-right font-mono font-semibold" style={{color:'#16a34a'}}>
-                          {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-400 italic text-xs">{r.inv.notes || "—"}</td>
-                        <td className="px-2 py-2">
-                          <div className="flex gap-1 justify-end">
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-blue-600"
-                              onClick={() => setEditInv({ propId: r.propId, idx: r.idx, inv: r.inv })}>
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-500"
-                              onClick={() => setDeleteInvGlobal({ propId: r.propId, idx: r.idx, name: r.inv.name })}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {names.map((name, gi) => {
+                      const entries = grouped.get(name)!;
+                      const isOpen = expandedInvestors.has(name);
+                      return (
+                        <>
+                          {/* Group header row — click to expand */}
+                          <tr
+                            key={`g-${name}`}
+                            className={`border-b border-slate-100 cursor-pointer ${gi % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/40 transition-colors`}
+                            onClick={() => toggleInvestor(name)}
+                          >
+                            <td className="px-4 py-3 font-bold text-slate-900">
+                              <span className="inline-flex items-center gap-2">
+                                <span className="text-slate-400 text-xs">{isOpen ? "▼" : "▶"}</span>
+                                {name}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 text-xs">
+                              {entries.length === 1 ? entries[0].propName : `${entries.length} properties`}
+                            </td>
+                            <td />
+                          </tr>
+                          {/* Expanded detail rows */}
+                          {isOpen && entries.map((r, i) => (
+                            <tr key={`${name}-${i}`} className="border-b border-slate-100 last:border-0 bg-blue-50/20">
+                              <td className="pl-10 pr-4 py-2 text-slate-500 text-xs italic">{r.propName}</td>
+                              <td className="px-4 py-2">
+                                <div className="flex items-center gap-3">
+                                  <span className="font-mono font-semibold text-xs" style={{color:'#16a34a'}}>
+                                    {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
+                                  </span>
+                                  {r.inv.notes && <span className="text-slate-400 italic text-xs">{r.inv.notes}</span>}
+                                </div>
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex gap-1 justify-end">
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-blue-600"
+                                    onClick={(e) => { e.stopPropagation(); setEditInv({ propId: r.propId, idx: r.idx, inv: r.inv }); }}>
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-red-500"
+                                    onClick={(e) => { e.stopPropagation(); setDeleteInvGlobal({ propId: r.propId, idx: r.idx, name: r.inv.name }); }}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
