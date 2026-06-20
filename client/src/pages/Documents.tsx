@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { Link } from "wouter";
 import {
   FileText, Upload, Trash2, Loader2, Search, Download,
-  Building2, Users, ChevronDown, ChevronRight, Filter
+  Building2, Users, Filter, Eye, X, ExternalLink, ChevronLeft, ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
@@ -37,6 +37,141 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 type Category = "lp_agreement" | "k1" | "tax_form" | "correspondence" | "other";
 
+type DocItem = {
+  id: number;
+  filename: string;
+  storageUrl: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  category: string;
+  year: number | null;
+  createdAt: Date;
+  propertyId: string | null;
+  investorId: number | null;
+  propertyName?: string | null;
+  investorName?: string | null;
+};
+
+// ─── PDF Preview Modal ────────────────────────────────────────────────────────
+
+function PreviewModal({
+  doc,
+  allDocs,
+  onClose,
+}: {
+  doc: DocItem;
+  allDocs: DocItem[];
+  onClose: () => void;
+}) {
+  const isPdf = doc.mimeType === "application/pdf" || doc.filename.toLowerCase().endsWith(".pdf");
+  const currentIdx = allDocs.findIndex((d) => d.id === doc.id);
+  const [activeIdx, setActiveIdx] = useState(currentIdx);
+  const activeDoc = allDocs[activeIdx] ?? doc;
+  const activePdf =
+    activeDoc.mimeType === "application/pdf" ||
+    activeDoc.filename.toLowerCase().endsWith(".pdf");
+
+  const hasPrev = activeIdx > 0;
+  const hasNext = activeIdx < allDocs.length - 1;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* Top bar */}
+      <div className="flex items-center gap-3 px-4 py-3 bg-slate-900/95 border-b border-slate-700 shrink-0">
+        <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-white truncate">{activeDoc.filename}</p>
+          <p className="text-xs text-slate-400">
+            {CATEGORY_LABELS[activeDoc.category] ?? activeDoc.category}
+            {activeDoc.year ? ` · ${activeDoc.year}` : ""}
+            {activeDoc.propertyName ? ` · ${activeDoc.propertyName}` : ""}
+            {activeDoc.investorName ? ` · ${activeDoc.investorName}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Prev / Next navigation */}
+          <button
+            onClick={() => setActiveIdx((i) => Math.max(0, i - 1))}
+            disabled={!hasPrev}
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Previous document"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs text-slate-500 tabular-nums">
+            {activeIdx + 1} / {allDocs.length}
+          </span>
+          <button
+            onClick={() => setActiveIdx((i) => Math.min(allDocs.length - 1, i + 1))}
+            disabled={!hasNext}
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            title="Next document"
+          >
+            <ChevronRightIcon className="w-4 h-4" />
+          </button>
+          <div className="w-px h-5 bg-slate-700 mx-1" />
+          <a
+            href={activeDoc.storageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            title="Open in new tab"
+          >
+            <ExternalLink className="w-4 h-4" />
+          </a>
+          <a
+            href={activeDoc.storageUrl}
+            download={activeDoc.filename}
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            title="Download"
+          >
+            <Download className="w-4 h-4" />
+          </a>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors ml-1"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Preview area */}
+      <div className="flex-1 overflow-hidden relative">
+        {activePdf ? (
+          <iframe
+            key={activeDoc.id}
+            src={`${activeDoc.storageUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+            className="w-full h-full border-0"
+            title={activeDoc.filename}
+          />
+        ) : (
+          /* Non-PDF fallback */
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-400">
+            <FileText className="w-16 h-16 opacity-30" />
+            <p className="text-sm">Preview not available for this file type.</p>
+            <a
+              href={activeDoc.storageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open file
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function Documents() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -54,6 +189,7 @@ export default function Documents() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DocItem | null>(null);
 
   const { data: documents, isLoading } = trpc.documents.list.useQuery({});
   const { data: properties } = trpc.properties.list.useQuery({});
@@ -99,7 +235,7 @@ export default function Documents() {
     const matchSearch = !q || d.filename.toLowerCase().includes(q);
     const matchCat = filterCategory === "all" || d.category === filterCategory;
     return matchSearch && matchCat;
-  });
+  }) as DocItem[];
 
   function formatSize(bytes: number | null) {
     if (!bytes) return "—";
@@ -107,6 +243,9 @@ export default function Documents() {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
+
+  const isPdf = (doc: DocItem) =>
+    doc.mimeType === "application/pdf" || doc.filename.toLowerCase().endsWith(".pdf");
 
   return (
     <Layout>
@@ -189,19 +328,29 @@ export default function Documents() {
                 {filtered.map((doc, idx) => {
                   const catCls = CATEGORY_COLORS[doc.category] ?? CATEGORY_COLORS.other;
                   const catLabel = CATEGORY_LABELS[doc.category] ?? doc.category;
+                  const canPreview = isPdf(doc);
                   return (
                     <tr key={doc.id} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                          <a
-                            href={doc.storageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-slate-900 hover:text-blue-600 transition-colors truncate max-w-xs"
-                          >
-                            {doc.filename}
-                          </a>
+                          {canPreview ? (
+                            <button
+                              onClick={() => setPreviewDoc(doc)}
+                              className="font-medium text-slate-900 hover:text-blue-600 transition-colors truncate max-w-xs text-left"
+                            >
+                              {doc.filename}
+                            </button>
+                          ) : (
+                            <a
+                              href={doc.storageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-slate-900 hover:text-blue-600 transition-colors truncate max-w-xs"
+                            >
+                              {doc.filename}
+                            </a>
+                          )}
                         </div>
                       </td>
                       <td className="px-5 py-3 hidden sm:table-cell">
@@ -239,6 +388,16 @@ export default function Documents() {
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1 justify-end">
+                          {/* Preview button — only for PDFs */}
+                          {canPreview && (
+                            <button
+                              onClick={() => setPreviewDoc(doc)}
+                              className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Preview"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <a
                             href={doc.storageUrl}
                             target="_blank"
@@ -267,6 +426,15 @@ export default function Documents() {
           )}
         </div>
       </div>
+
+      {/* ── PDF Preview Modal ── */}
+      {previewDoc && (
+        <PreviewModal
+          doc={previewDoc}
+          allDocs={filtered}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
 
       {/* Upload Dialog */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>

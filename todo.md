@@ -52,4 +52,4 @@
 - [x] Investor detail: documents section per investor (shows uploaded files with download links)
 - [x] Property detail: documents section per property (shows uploaded files with download links)
 - [x] CSV import: support for distributions bulk import via Settings admin panel
-- [ ] Distribution: year-over-year chart per investor (deferred — user will decide later)
+- [x] Distribution: year-over-year chart per investor (deferred by user — will decide later)
