@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link, useParams } from "wouter";
 import {
   ArrowLeft, Building2, Users, Mail, ChevronRight, Loader2,
-  FileText, Clock, Plus, Trash2, DollarSign, TrendingUp
+  FileText, Clock, Plus, Trash2, DollarSign, TrendingUp, Download
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
@@ -64,6 +64,10 @@ export default function InvestorDetail() {
     { enabled: !!investorId }
   );
   const { data: distributions } = trpc.distributions.list.useQuery(
+    { investorId },
+    { enabled: !!investorId }
+  );
+  const { data: investorDocs } = trpc.documents.list.useQuery(
     { investorId },
     { enabled: !!investorId }
   );
@@ -369,6 +373,40 @@ export default function InvestorDetail() {
           </div>
         </div>
       </div>
+
+      {/* Documents section */}
+      {investorDocs && investorDocs.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mt-6">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-slate-400" />
+            <h2 className="text-sm font-semibold text-slate-700">Documents</h2>
+            <span className="ml-auto text-xs text-slate-400">{investorDocs.length} file{investorDocs.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {investorDocs.map((doc) => (
+              <div key={doc.id} className="px-5 py-3 flex items-center gap-3">
+                <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{doc.filename}</p>
+                  <p className="text-xs text-slate-400">
+                    {doc.year ? `${doc.year} · ` : ''}
+                    {doc.category === 'k1' ? 'K-1' : doc.category === 'lp_agreement' ? 'LP Agreement' : doc.category === 'tax_form' ? 'Tax Form' : doc.category === 'correspondence' ? 'Correspondence' : 'Other'}
+                  </p>
+                </div>
+                <a
+                  href={doc.storageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Download"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

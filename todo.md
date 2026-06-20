@@ -48,8 +48,8 @@
 - [x] All 18 tests passing
 
 ## Pending / Future
-- [ ] Document upload: show linked property/investor names (not just IDs) in documents list
-- [ ] Investor detail: link documents tab per investor
-- [ ] Property detail: link documents tab per property
-- [ ] CSV import: support for property_investors bulk update
-- [ ] Distribution: year-over-year chart per investor
+- [x] Document upload: show linked property/investor names (not just IDs) in documents list
+- [x] Investor detail: documents section per investor (shows uploaded files with download links)
+- [x] Property detail: documents section per property (shows uploaded files with download links)
+- [x] CSV import: support for distributions bulk import via Settings admin panel
+- [ ] Distribution: year-over-year chart per investor (deferred — user will decide later)

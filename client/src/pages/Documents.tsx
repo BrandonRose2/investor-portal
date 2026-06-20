@@ -214,13 +214,13 @@ export default function Documents() {
                           {doc.propertyId && (
                             <Link href={`/property/${doc.propertyId}`} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
                               <Building2 className="w-3 h-3" />
-                              {doc.propertyId}
+                              {(doc as any).propertyName ?? doc.propertyId}
                             </Link>
                           )}
                           {doc.investorId && (
                             <Link href={`/investor/${doc.investorId}`} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
                               <Users className="w-3 h-3" />
-                              Investor #{doc.investorId}
+                              {(doc as any).investorName ?? `Investor #${doc.investorId}`}
                             </Link>
                           )}
                           {!doc.propertyId && !doc.investorId && (

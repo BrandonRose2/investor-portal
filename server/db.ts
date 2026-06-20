@@ -343,11 +343,30 @@ export async function listDocuments(filters: {
   if (filters.propertyId) conditions.push(eq(documents.propertyId, filters.propertyId));
   if (filters.investorId) conditions.push(eq(documents.investorId, filters.investorId));
 
-  return db
-    .select()
+  const rows = await db
+    .select({
+      id: documents.id,
+      propertyId: documents.propertyId,
+      investorId: documents.investorId,
+      filename: documents.filename,
+      storageKey: documents.storageKey,
+      storageUrl: documents.storageUrl,
+      mimeType: documents.mimeType,
+      sizeBytes: documents.sizeBytes,
+      category: documents.category,
+      year: documents.year,
+      uploadedBy: documents.uploadedBy,
+      createdAt: documents.createdAt,
+      propertyName: properties.name,
+      investorName: investors.name,
+    })
     .from(documents)
+    .leftJoin(properties, eq(documents.propertyId, properties.id))
+    .leftJoin(investors, eq(documents.investorId, investors.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(documents.createdAt));
+
+  return rows;
 }
 
 export async function createDocument(data: {
