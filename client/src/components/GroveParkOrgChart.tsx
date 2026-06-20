@@ -57,10 +57,10 @@ const DATA: OrgNode = {
 
 // ── Layout engine ────────────────────────────────────────────────────────────
 
-const NODE_W = 96;
+const NODE_W = 82;
 const NODE_H = 54;
-const H_GAP  = 12;   // horizontal gap between siblings
-const V_GAP  = 48;   // vertical gap between levels
+const H_GAP  = 6;    // horizontal gap between siblings
+const V_GAP  = 44;   // vertical gap between levels
 
 interface LayoutNode {
   node: OrgNode;
@@ -221,7 +221,7 @@ export default function GroveParkOrgChart({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[1100px] max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-[1200px] max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2">
