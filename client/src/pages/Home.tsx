@@ -131,12 +131,12 @@ export default function Home() {
             )}
             {filteredProperties.map((prop) => (
               <Link key={prop.id} href={`/property/${prop.id}`}>
-                <div className="block group flex items-center gap-4 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
+                <div className="block group grid items-center px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer" style={{gridTemplateColumns:'1rem 1fr 10rem 3.5rem 1rem', gap:'0.75rem'}}>
                     {/* Left accent bar */}
-                    <div className={`w-1 h-10 rounded-full shrink-0 ${prop.isGrovePark ? "bg-amber-400" : "bg-blue-500"}`} />
+                    <div className={`w-1 h-10 rounded-full justify-self-center ${prop.isGrovePark ? "bg-amber-400" : "bg-blue-500"}`} />
 
                     {/* Property info */}
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold text-slate-900 truncate">{prop.name}</span>
                         {prop.isGrovePark && (
@@ -148,19 +148,19 @@ export default function Home() {
                       <div className="text-sm text-slate-500 truncate mt-0.5">{prop.entity_name}</div>
                     </div>
 
-                    {/* EIN */}
-                    <div className="hidden sm:block shrink-0 text-center" style={{width:'9rem'}}>
+                    {/* EIN — fixed-width centered column so all numbers align */}
+                    <div className="hidden sm:flex flex-col items-center justify-center">
                       <div className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-0.5">EIN</div>
-                      <div className="font-mono font-bold text-slate-700 text-sm" style={{fontVariantNumeric:'tabular-nums'}}>{prop.entity_ein || '—'}</div>
+                      <div className="font-mono font-bold text-blue-700 text-sm" style={{fontVariantNumeric:'tabular-nums', letterSpacing:'0.03em'}}>{prop.entity_ein || '—'}</div>
                     </div>
 
                     {/* Investor count */}
-                    <div className="shrink-0 flex items-center gap-1 text-sm font-medium text-slate-600">
+                    <div className="flex items-center justify-end gap-1 text-sm font-medium text-slate-600">
                       <Users className="w-4 h-4" />
                       {prop.investors.length}
                     </div>
 
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors justify-self-end" />
                 </div>
               </Link>
             ))}
