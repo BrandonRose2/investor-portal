@@ -381,6 +381,7 @@ export default function Settings() {
   const [editInv, setEditInv] = useState<{ propId: string; idx: number; inv: Investor } | null>(null);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [deleteInvGlobal, setDeleteInvGlobal] = useState<{ propId: string; idx: number; name: string } | null>(null);
+  const [invSort, setInvSort] = useState<"asc" | "desc" | null>(null);
 
   if (!isAuthed) return <PinLock />;
 
@@ -490,7 +491,9 @@ export default function Settings() {
           const q = search.toLowerCase();
           const rows: { propId: string; propName: string; idx: number; inv: Investor }[] = [];
           properties.forEach((p) => p.investors.forEach((inv, idx) => rows.push({ propId: p.id, propName: p.name, idx, inv })));
-          const filtered2 = rows.filter(r => !q || r.inv.name.toLowerCase().includes(q) || r.propName.toLowerCase().includes(q));
+          let filtered2 = rows.filter(r => !q || r.inv.name.toLowerCase().includes(q) || r.propName.toLowerCase().includes(q));
+          if (invSort === "asc") filtered2 = [...filtered2].sort((a, b) => a.inv.name.localeCompare(b.inv.name));
+          if (invSort === "desc") filtered2 = [...filtered2].sort((a, b) => b.inv.name.localeCompare(a.inv.name));
           return (
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               {filtered2.length === 0 ? (
@@ -499,7 +502,15 @@ export default function Settings() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Entity (Owner)</th>
+                      <th
+                        className="text-left px-4 py-2.5 font-semibold text-slate-600 cursor-pointer select-none hover:text-blue-600 transition-colors"
+                        onClick={() => setInvSort(s => s === "asc" ? "desc" : "asc")}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Entity (Owner)
+                          <span className="text-xs text-slate-400">{invSort === "asc" ? "▲" : invSort === "desc" ? "▼" : "⇅"}</span>
+                        </span>
+                      </th>
                       <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Property</th>
                       <th className="text-right px-4 py-2.5 font-semibold text-slate-600">% Capital</th>
                       <th className="text-left px-4 py-2.5 font-semibold text-slate-600">Note</th>
