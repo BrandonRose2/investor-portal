@@ -236,7 +236,7 @@ function InvestorForm({ initial, onSave, onClose, title }: InvestorFormProps) {
           </div>
           <div>
             <label className="text-xs font-medium text-slate-600 mb-1 block">Note <span className="text-slate-400 font-normal">(shown next to name)</span></label>
-            <Input value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. Deceased — contact Kaitlyn" />
+            <Input value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} placeholder="Add a note..." />
           </div>
         </div>
         <DialogFooter>
