@@ -95,7 +95,7 @@ export default function InvestorDetail() {
                   <tr key={idx} className={`${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} group`}>
                     <td className="px-5 py-3 text-right">
                       {p.pct_capital !== null ? (
-                        <span className="font-mono text-base font-semibold text-slate-700">{p.pct_capital.toFixed(4)}%</span>
+                        <span className="font-mono text-base font-semibold" style={{color:'#355E3B'}}>{p.pct_capital.toFixed(4)}%</span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}

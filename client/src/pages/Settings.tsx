@@ -511,7 +511,7 @@ export default function Settings() {
                       <tr key={i} className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
                         <td className="px-4 py-2.5 font-semibold text-slate-900">{r.inv.name}</td>
                         <td className="px-4 py-2.5 text-slate-500 text-xs">{r.propName}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-slate-700">
+                        <td className="px-4 py-2.5 text-right font-mono font-semibold" style={{color:'#355E3B'}}>
                           {r.inv.pct_capital !== null ? `${r.inv.pct_capital.toFixed(4)}%` : "—"}
                         </td>
                         <td className="px-4 py-2.5 text-slate-400 italic text-xs">{r.inv.notes || "—"}</td>
