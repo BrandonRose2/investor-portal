@@ -65,7 +65,7 @@ export default function Layout({ children }: LayoutProps) {
             alt="Investor Portal"
             className="w-8 h-8 rounded-md object-cover"
           />
-          <span className="text-base font-bold text-slate-900 tracking-tight">Equity Ledger</span>
+          <span className="text-base font-bold text-slate-900 tracking-tight">Investor Summary</span>
         </div>
 
         {/* Main Nav */}
