@@ -2,7 +2,7 @@
 // Design: light mode, blue-700 accent, Inter font, slate palette
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Building2, Users, LayoutDashboard, Menu, X, Settings2, BookOpen } from "lucide-react";
+import { Building2, Users, LayoutDashboard, Menu, X, Settings2 } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,7 +12,6 @@ const NAV_TOP = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/directory", label: "Properties", icon: Building2 },
   { href: "/directory?tab=investors", label: "Investors", icon: Users },
-  { href: "/directory?tab=properties", label: "Directory", icon: BookOpen },
 ];
 
 const NAV_BOTTOM = [
