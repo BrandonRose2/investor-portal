@@ -71,7 +71,7 @@ export default function Home() {
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Page title */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">Investor Directory</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Equity Ledger</h1>
           <p className="text-base text-slate-500 mt-1">
             Search across all 37 properties and their investors. Click any row for full detail.
           </p>
