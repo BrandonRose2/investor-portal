@@ -92,7 +92,7 @@ export default function PropertyDetail() {
             <h2 className="text-sm font-semibold text-slate-700">Investors / Owners</h2>
             {totalPct > 0 && (
               <span className="text-xs font-mono text-slate-400">
-                <span style={{color:'#355E3B'}} className="font-mono font-semibold">Total shown: {totalPct.toFixed(4)}%</span>
+                <span style={{color:'#16a34a'}} className="font-mono font-semibold">Total shown: {totalPct.toFixed(4)}%</span>
               </span>
             )}
           </div>
@@ -111,7 +111,7 @@ export default function PropertyDetail() {
                   <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                     <td className="px-5 py-3 text-right">
                       {inv.pct_capital !== null ? (
-                        <span className="font-mono text-base font-semibold" style={{color:'#355E3B'}}>{inv.pct_capital.toFixed(4)}%</span>
+                        <span className="font-mono text-base font-semibold" style={{color:'#16a34a'}}>{inv.pct_capital.toFixed(4)}%</span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
