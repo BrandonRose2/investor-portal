@@ -17,9 +17,7 @@ import {
   listDistributions,
   createDistribution,
   deleteDistribution,
-  listDocuments,
-  createDocument,
-  deleteDocument,
+  listDocuments, createDocument, deleteDocument, renameDocument,
   createProperty,
   updateProperty,
   deleteProperty,
@@ -254,6 +252,13 @@ export const appRouter = router({
           uploadedBy: null,
         });
       }),
+
+    rename: publicProcedure
+      .input(z.object({
+        id: z.number().int(),
+        filename: z.string().min(1).max(255),
+      }))
+      .mutation(({ input }) => renameDocument(input.id, input.filename.trim())),
 
     delete: publicProcedure
       .input(z.object({ id: z.number().int() }))

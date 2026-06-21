@@ -11,6 +11,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import QuickUploadButton from "@/components/QuickUploadButton";
 import DocPreviewModal, { type PreviewDoc } from "@/components/DocPreviewModal";
+import InlineRename from "@/components/InlineRename";
 
 const AVATAR_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-700" },
@@ -53,6 +54,9 @@ export default function InvestorDetail() {
   const utils = trpc.useUtils();
   const [noteContent, setNoteContent] = useState("");
   const [previewDoc, setPreviewDoc] = useState<PreviewDoc | null>(null);
+  const renameDoc = trpc.documents.rename.useMutation({
+    onSuccess: () => utils.documents.list.invalidate({ investorId }),
+  });
 
   const { data: investor, isLoading } = trpc.investors.getById.useQuery(
     { id: investorId },
@@ -397,16 +401,17 @@ export default function InvestorDetail() {
             {investorDocs.map((doc) => (
               <div key={doc.id} className="px-5 py-3 flex items-center gap-3 group">
                 <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                <button
-                  onClick={() => setPreviewDoc(doc)}
-                  className="flex-1 min-w-0 text-left"
-                >
-                  <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-600 transition-colors">{doc.filename}</p>
+                <div className="flex-1 min-w-0">
+                  <InlineRename
+                    value={doc.filename}
+                    onSave={(name) => renameDoc.mutateAsync({ id: doc.id, filename: name })}
+                    className="text-sm font-medium text-slate-800 w-full"
+                  />
                   <p className="text-xs text-slate-400">
                     {doc.year ? `${doc.year} · ` : ''}
                     {doc.category === 'k1' ? 'K-1' : doc.category === 'lp_agreement' ? 'LP Agreement' : doc.category === 'tax_form' ? 'Tax Form' : doc.category === 'correspondence' ? 'Correspondence' : 'Other'}
                   </p>
-                </button>
+                </div>
                 <button
                   onClick={() => setPreviewDoc(doc)}
                   className="p-1.5 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"

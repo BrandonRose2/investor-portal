@@ -406,6 +406,12 @@ export async function deleteDocument(id: number) {
   await db.delete(documents).where(eq(documents.id, id));
 }
 
+export async function renameDocument(id: number, filename: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(documents).set({ filename }).where(eq(documents.id, id));
+}
+
 // ─── Admin: property/investor CRUD ───────────────────────────────────────────
 
 export async function createProperty(data: {

@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import FileDropZone from "@/components/FileDropZone";
+import InlineRename from "@/components/InlineRename";
 
 const CATEGORY_LABELS: Record<string, string> = {
   lp_agreement:     "LP Agreement",
@@ -205,6 +206,11 @@ export default function Documents() {
     onError: () => toast.error("Delete failed"),
   });
 
+  const renameDoc = trpc.documents.rename.useMutation({
+    onSuccess: () => { utils.documents.list.invalidate(); toast.success("Document renamed"); },
+    onError: () => toast.error("Rename failed"),
+  });
+
   async function handleUpload() {
     if (selectedFiles.length === 0) return;
     setUploadProgress({ done: 0, total: selectedFiles.length });
@@ -348,22 +354,19 @@ export default function Documents() {
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                          {canPreview ? (
+                          <InlineRename
+                            value={doc.filename}
+                            onSave={(name) => renameDoc.mutateAsync({ id: doc.id, filename: name })}
+                            className="font-medium text-slate-900 text-sm max-w-xs"
+                          />
+                          {canPreview && (
                             <button
                               onClick={() => setPreviewDoc(doc)}
-                              className="font-medium text-slate-900 hover:text-blue-600 transition-colors truncate max-w-xs text-left"
+                              className="shrink-0 p-0.5 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Preview"
                             >
-                              {doc.filename}
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
-                          ) : (
-                            <a
-                              href={doc.storageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-medium text-slate-900 hover:text-blue-600 transition-colors truncate max-w-xs"
-                            >
-                              {doc.filename}
-                            </a>
                           )}
                         </div>
                       </td>
