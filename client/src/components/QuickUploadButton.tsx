@@ -1,6 +1,6 @@
 // QuickUploadButton — reusable inline document upload for detail pages
 // Renders a compact "Attach Document" button that opens a mini upload dialog.
-// Pass either propertyId or investorId (or both) to pre-fill the link.
+// Supports selecting and uploading multiple files simultaneously.
 import { useState } from "react";
 import { Upload, Loader2, Paperclip } from "lucide-react";
 import FileDropZone from "@/components/FileDropZone";
@@ -33,50 +33,59 @@ interface Props {
   onUploaded?: () => void;
 }
 
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export default function QuickUploadButton({ propertyId, investorId, onUploaded }: Props) {
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<Category>("other");
   const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const uploadDoc = trpc.documents.upload.useMutation({
-    onSuccess: () => {
-      // Invalidate both the global list and any filtered queries
-      utils.documents.list.invalidate();
-      setOpen(false);
-      setSelectedFile(null);
-      setCategory("other");
-      setYear(new Date().getFullYear().toString());
-      toast.success("Document attached");
-      onUploaded?.();
-    },
-    onError: () => toast.error("Upload failed — please try again"),
+    onError: () => toast.error("One or more uploads failed — please try again"),
   });
 
-  function handleUpload() {
-    if (!selectedFile) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = (e.target?.result as string).split(",")[1];
-      uploadDoc.mutate({
-        propertyId: propertyId ?? null,
-        investorId: investorId ?? null,
-        filename: selectedFile.name,
-        fileBase64: base64,
-        mimeType: selectedFile.type || "application/octet-stream",
-        sizeBytes: selectedFile.size,
-        category,
-        year: year ? parseInt(year) : null,
+  async function handleUpload() {
+    if (selectedFiles.length === 0) return;
+    setProgress({ done: 0, total: selectedFiles.length });
+    let succeeded = 0;
+    for (let idx = 0; idx < selectedFiles.length; idx++) {
+      const file = selectedFiles[idx];
+      await new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const base64 = (e.target?.result as string).split(",")[1];
+          try {
+            await uploadDoc.mutateAsync({
+              propertyId: propertyId ?? null,
+              investorId: investorId ?? null,
+              filename: file.name,
+              fileBase64: base64,
+              mimeType: file.type || "application/octet-stream",
+              sizeBytes: file.size,
+              category,
+              year: year ? parseInt(year) : null,
+            });
+            succeeded++;
+          } catch {
+            // individual error toasted by onError
+          }
+          setProgress({ done: idx + 1, total: selectedFiles.length });
+          resolve();
+        };
+        reader.readAsDataURL(file);
       });
-    };
-    reader.readAsDataURL(selectedFile);
+    }
+    utils.documents.list.invalidate();
+    setProgress(null);
+    setOpen(false);
+    setSelectedFiles([]);
+    setCategory("other");
+    setYear(new Date().getFullYear().toString());
+    if (succeeded > 0) {
+      toast.success(`${succeeded} document${succeeded > 1 ? "s" : ""} attached`);
+      onUploaded?.();
+    }
   }
 
   return (
@@ -98,8 +107,8 @@ export default function QuickUploadButton({ propertyId, investorId, onUploaded }
           <div className="space-y-4 py-1">
             {/* File picker */}
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1.5 block">File *</label>
-              <FileDropZone value={selectedFile} onChange={setSelectedFile} />
+              <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Files *</label>
+              <FileDropZone value={selectedFiles} onChange={setSelectedFiles} />
             </div>
 
             {/* Category + Year side by side */}
@@ -131,7 +140,7 @@ export default function QuickUploadButton({ propertyId, investorId, onUploaded }
             {/* Context hint */}
             {(propertyId || investorId) && (
               <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">
-                This document will be automatically linked to{" "}
+                {selectedFiles.length > 1 ? "These documents" : "This document"} will be automatically linked to{" "}
                 {propertyId && investorId
                   ? "this property and investor"
                   : propertyId
@@ -146,13 +155,12 @@ export default function QuickUploadButton({ propertyId, investorId, onUploaded }
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpload} disabled={!selectedFile || uploadDoc.isPending}>
-              {uploadDoc.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+            <Button onClick={handleUpload} disabled={selectedFiles.length === 0 || progress !== null}>
+              {progress !== null ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-1.5" />{progress.done}/{progress.total}</>
               ) : (
-                <Upload className="w-4 h-4 mr-1.5" />
+                <><Upload className="w-4 h-4 mr-1.5" />Upload{selectedFiles.length > 1 ? ` ${selectedFiles.length} files` : ""}</>
               )}
-              Upload
             </Button>
           </DialogFooter>
         </DialogContent>

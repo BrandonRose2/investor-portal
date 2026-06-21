@@ -187,7 +187,8 @@ export default function Documents() {
     category: "other" as Category,
     year: new Date().getFullYear().toString(),
   });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [previewDoc, setPreviewDoc] = useState<DocItem | null>(null);
 
@@ -196,14 +197,7 @@ export default function Documents() {
   const { data: investors } = trpc.investors.list.useQuery({});
 
   const uploadDoc = trpc.documents.upload.useMutation({
-    onSuccess: () => {
-      utils.documents.list.invalidate();
-      setUploadOpen(false);
-      setSelectedFile(null);
-      setUploadForm({ propertyId: "", investorId: "", category: "other", year: new Date().getFullYear().toString() });
-      toast.success("Document uploaded");
-    },
-    onError: () => toast.error("Upload failed"),
+    onError: () => toast.error("One or more uploads failed"),
   });
 
   const deleteDoc = trpc.documents.delete.useMutation({
@@ -212,22 +206,42 @@ export default function Documents() {
   });
 
   async function handleUpload() {
-    if (!selectedFile) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = (e.target?.result as string).split(",")[1];
-      uploadDoc.mutate({
-        propertyId: uploadForm.propertyId || null,
-        investorId: uploadForm.investorId ? parseInt(uploadForm.investorId) : null,
-        filename: selectedFile.name,
-        fileBase64: base64,
-        mimeType: selectedFile.type || "application/octet-stream",
-        sizeBytes: selectedFile.size,
-        category: uploadForm.category,
-        year: uploadForm.year ? parseInt(uploadForm.year) : null,
+    if (selectedFiles.length === 0) return;
+    setUploadProgress({ done: 0, total: selectedFiles.length });
+    let succeeded = 0;
+    for (let idx = 0; idx < selectedFiles.length; idx++) {
+      const file = selectedFiles[idx];
+      await new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const base64 = (e.target?.result as string).split(",")[1];
+          try {
+            await uploadDoc.mutateAsync({
+              propertyId: uploadForm.propertyId || null,
+              investorId: uploadForm.investorId ? parseInt(uploadForm.investorId) : null,
+              filename: file.name,
+              fileBase64: base64,
+              mimeType: file.type || "application/octet-stream",
+              sizeBytes: file.size,
+              category: uploadForm.category,
+              year: uploadForm.year ? parseInt(uploadForm.year) : null,
+            });
+            succeeded++;
+          } catch {
+            // individual error already toasted by onError
+          }
+          setUploadProgress({ done: idx + 1, total: selectedFiles.length });
+          resolve();
+        };
+        reader.readAsDataURL(file);
       });
-    };
-    reader.readAsDataURL(selectedFile);
+    }
+    utils.documents.list.invalidate();
+    setUploadProgress(null);
+    setUploadOpen(false);
+    setSelectedFiles([]);
+    setUploadForm({ propertyId: "", investorId: "", category: "other", year: new Date().getFullYear().toString() });
+    if (succeeded > 0) toast.success(`${succeeded} document${succeeded > 1 ? "s" : ""} uploaded`);
   }
 
   const filtered = (documents ?? []).filter((d) => {
@@ -446,7 +460,7 @@ export default function Documents() {
             {/* File picker */}
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">File *</label>
-              <FileDropZone value={selectedFile} onChange={setSelectedFile} />
+              <FileDropZone value={selectedFiles} onChange={setSelectedFiles} />
             </div>
 
             {/* Category */}
@@ -508,10 +522,13 @@ export default function Documents() {
             <Button variant="outline" onClick={() => setUploadOpen(false)}>Cancel</Button>
             <Button
               onClick={handleUpload}
-              disabled={!selectedFile || uploadDoc.isPending}
+              disabled={selectedFiles.length === 0 || uploadProgress !== null}
             >
-              {uploadDoc.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Upload className="w-4 h-4 mr-1" />}
-              Upload
+              {uploadProgress !== null ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-1" />{uploadProgress.done}/{uploadProgress.total}</>
+              ) : (
+                <><Upload className="w-4 h-4 mr-1" />Upload {selectedFiles.length > 1 ? `${selectedFiles.length} files` : ""}</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
