@@ -384,8 +384,12 @@ export default function InvestorDetail() {
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mt-6">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
             <FileText className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-semibold text-slate-700">Documents</h2>
-            <span className="ml-auto text-xs text-slate-400">{investorDocs.length} file{investorDocs.length !== 1 ? 's' : ''}</span>
+            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              Documents
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                {investorDocs.length}
+              </span>
+            </h2>
           </div>
           <div className="divide-y divide-slate-50">
             {investorDocs.map((doc) => (
