@@ -226,7 +226,7 @@ export const appRouter = router({
       }))
       .query(({ input }) => listDocuments(input)),
 
-    upload: adminProcedure
+    upload: publicProcedure
       .input(z.object({
         propertyId: z.string().optional().nullable(),
         investorId: z.number().int().optional().nullable(),
@@ -237,7 +237,7 @@ export const appRouter = router({
         category: z.enum(["lp_agreement", "k1", "tax_form", "correspondence", "other"]),
         year: z.number().int().optional().nullable(),
       }))
-      .mutation(async ({ input, ctx }) => {
+      .mutation(async ({ input }) => {
         const buffer = Buffer.from(input.fileBase64, "base64");
         const key = `documents/${Date.now()}-${input.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const { url } = await storagePut(key, buffer, input.mimeType);
@@ -251,11 +251,11 @@ export const appRouter = router({
           sizeBytes: input.sizeBytes ?? null,
           category: input.category,
           year: input.year ?? null,
-          uploadedBy: ctx.user.id,
+          uploadedBy: null,
         });
       }),
 
-    delete: adminProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(({ input }) => deleteDocument(input.id)),
   }),
