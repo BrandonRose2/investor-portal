@@ -1,8 +1,9 @@
 // QuickUploadButton — reusable inline document upload for detail pages
 // Renders a compact "Attach Document" button that opens a mini upload dialog.
 // Pass either propertyId or investorId (or both) to pre-fill the link.
-import { useState, useRef } from "react";
-import { Upload, FileText, Loader2, Paperclip } from "lucide-react";
+import { useState } from "react";
+import { Upload, Loader2, Paperclip } from "lucide-react";
+import FileDropZone from "@/components/FileDropZone";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
@@ -44,7 +45,6 @@ export default function QuickUploadButton({ propertyId, investorId, onUploaded }
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [category, setCategory] = useState<Category>("other");
   const [year, setYear] = useState(new Date().getFullYear().toString());
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadDoc = trpc.documents.upload.useMutation({
     onSuccess: () => {
@@ -99,31 +99,7 @@ export default function QuickUploadButton({ propertyId, investorId, onUploaded }
             {/* File picker */}
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1.5 block">File *</label>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 rounded-lg p-5 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors"
-              >
-                {selectedFile ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
-                    <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                    <span className="font-medium truncate max-w-xs">{selectedFile.name}</span>
-                    <span className="text-slate-400 shrink-0">({formatSize(selectedFile.size)})</span>
-                  </div>
-                ) : (
-                  <div className="text-slate-400">
-                    <Upload className="w-5 h-5 mx-auto mb-1" />
-                    <p className="text-sm">Click to select a file</p>
-                    <p className="text-xs mt-0.5 text-slate-300">PDF, CSV, Excel, Word — max 16 MB</p>
-                  </div>
-                )}
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.csv,.xlsx,.xls,.doc,.docx"
-                className="hidden"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-              />
+              <FileDropZone value={selectedFile} onChange={setSelectedFile} />
             </div>
 
             {/* Category + Year side by side */}

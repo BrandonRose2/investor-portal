@@ -1,5 +1,5 @@
 // Documents page — upload and view PDF/CSV documents per investor or property
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import {
   FileText, Upload, Trash2, Loader2, Search, Download,
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import FileDropZone from "@/components/FileDropZone";
 
 const CATEGORY_LABELS: Record<string, string> = {
   lp_agreement:     "LP Agreement",
@@ -187,7 +188,6 @@ export default function Documents() {
     year: new Date().getFullYear().toString(),
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [previewDoc, setPreviewDoc] = useState<DocItem | null>(null);
 
@@ -446,31 +446,7 @@ export default function Documents() {
             {/* File picker */}
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">File *</label>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors"
-              >
-                {selectedFile ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-slate-700">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">{selectedFile.name}</span>
-                    <span className="text-slate-400">({formatSize(selectedFile.size)})</span>
-                  </div>
-                ) : (
-                  <div className="text-slate-400">
-                    <Upload className="w-6 h-6 mx-auto mb-1" />
-                    <p className="text-sm">Click to select a PDF or CSV file</p>
-                    <p className="text-xs mt-0.5">Max 16 MB</p>
-                  </div>
-                )}
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.csv,.xlsx,.xls,.doc,.docx"
-                className="hidden"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-              />
+              <FileDropZone value={selectedFile} onChange={setSelectedFile} />
             </div>
 
             {/* Category */}
