@@ -1,8 +1,9 @@
 // Property detail page — fetches from tRPC
 import { useState } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft, Building2, Users, Mail, AlertCircle, Info, GitBranch, Loader2, FileText, Download } from "lucide-react";
+import { ArrowLeft, Building2, Users, Mail, AlertCircle, Info, GitBranch, Loader2, FileText, Download, Eye } from "lucide-react";
 import QuickUploadButton from "@/components/QuickUploadButton";
+import DocPreviewModal, { type PreviewDoc } from "@/components/DocPreviewModal";
 import Layout from "@/components/Layout";
 import GroveParkOrgChart from "@/components/GroveParkOrgChart";
 import { trpc } from "@/lib/trpc";
@@ -17,6 +18,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const [orgChartOpen, setOrgChartOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<PreviewDoc | null>(null);
 
   const { data: property, isLoading } = trpc.properties.getById.useQuery(
     { id: id ?? "" },
@@ -243,20 +245,30 @@ export default function PropertyDetail() {
           </div>
           <div className="divide-y divide-slate-50">
             {propertyDocs.map((doc) => (
-              <div key={doc.id} className="px-5 py-3 flex items-center gap-3">
+              <div key={doc.id} className="px-5 py-3 flex items-center gap-3 group">
                 <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{doc.filename}</p>
+                <button
+                  onClick={() => setPreviewDoc(doc)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <p className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-600 transition-colors">{doc.filename}</p>
                   <p className="text-xs text-slate-400">
                     {doc.year ? `${doc.year} · ` : ''}
                     {doc.category === 'k1' ? 'K-1' : doc.category === 'lp_agreement' ? 'LP Agreement' : doc.category === 'tax_form' ? 'Tax Form' : doc.category === 'correspondence' ? 'Correspondence' : 'Other'}
                   </p>
-                </div>
+                </button>
+                <button
+                  onClick={() => setPreviewDoc(doc)}
+                  className="p-1.5 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Preview"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
                 <a
                   href={doc.storageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="p-1.5 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                   title="Download"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -265,6 +277,15 @@ export default function PropertyDetail() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {previewDoc && (
+        <DocPreviewModal
+          doc={previewDoc}
+          allDocs={propertyDocs ?? []}
+          onClose={() => setPreviewDoc(null)}
+        />
       )}
     </Layout>
   );
