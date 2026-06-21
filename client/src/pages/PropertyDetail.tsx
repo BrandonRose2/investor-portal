@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, Building2, Users, Mail, AlertCircle, Info, GitBranch, Loader2, FileText, Download } from "lucide-react";
+import QuickUploadButton from "@/components/QuickUploadButton";
 import Layout from "@/components/Layout";
 import GroveParkOrgChart from "@/components/GroveParkOrgChart";
 import { trpc } from "@/lib/trpc";
@@ -21,6 +22,7 @@ export default function PropertyDetail() {
     { id: id ?? "" },
     { enabled: !!id }
   );
+  const utils = trpc.useUtils();
   const { data: propertyDocs } = trpc.documents.list.useQuery(
     { propertyId: id ?? "" },
     { enabled: !!id }
@@ -109,12 +111,16 @@ export default function PropertyDetail() {
                 EIN {property.entityEin || "—"}
               </p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="flex items-center gap-1 text-sm text-slate-500">
                 <Users className="w-4 h-4" />
                 <span className="font-semibold text-slate-800">{property.investors.length}</span>
                 <span>investors</span>
               </div>
+              <QuickUploadButton
+                propertyId={id}
+                onUploaded={() => utils.documents.list.invalidate({ propertyId: id ?? "" })}
+              />
             </div>
           </div>
 

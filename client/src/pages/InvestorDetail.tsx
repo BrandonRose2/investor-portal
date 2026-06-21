@@ -9,6 +9,7 @@ import {
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import QuickUploadButton from "@/components/QuickUploadButton";
 
 const AVATAR_COLORS = [
   { bg: "bg-blue-100", text: "text-blue-700" },
@@ -153,12 +154,16 @@ export default function InvestorDetail() {
                 <p className="text-xs text-slate-500 mt-1">{investor.phone}</p>
               )}
             </div>
-            <div className="text-right shrink-0">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="flex items-center gap-1 text-sm text-slate-500">
                 <Building2 className="w-4 h-4" />
                 <span className="font-semibold text-slate-800">{investor.properties.length}</span>
                 <span>{investor.properties.length === 1 ? "property" : "properties"}</span>
               </div>
+              <QuickUploadButton
+                investorId={investorId}
+                onUploaded={() => utils.documents.list.invalidate({ investorId })}
+              />
             </div>
           </div>
         </div>
