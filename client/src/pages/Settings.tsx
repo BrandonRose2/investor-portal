@@ -41,6 +41,9 @@ import {
   ArrowDown,
   Upload,
   FileText,
+  GitMerge,
+  AlertTriangle,
+  Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -127,7 +130,7 @@ function PinLock({ onUnlock }: { onUnlock: () => void }) {
 }
 
 // ── Main Admin Panel ───────────────────────────────────────────────────────────
-type AdminTab = "investors" | "properties";
+type AdminTab = "investors" | "properties" | "duplicates";
 
 export default function Settings() {
   const [unlocked, setUnlocked] = useState(false);
@@ -143,6 +146,10 @@ export default function Settings() {
   // Data
   const { data: investors, isLoading: invLoading } = trpc.investors.list.useQuery({});
   const { data: properties, isLoading: propLoading } = trpc.properties.list.useQuery({});
+  const { data: duplicates, isLoading: dupLoading, refetch: refetchDupes } = trpc.investors.findDuplicates.useQuery(
+    undefined,
+    { enabled: tab === "duplicates" }
+  );
 
   // Mutations
   const updateStatus = trpc.investors.updateStatus.useMutation({
@@ -182,6 +189,19 @@ export default function Settings() {
 
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState<{ type: "investor" | "property"; id: number | string; name: string } | null>(null);
+
+  // Merge dialog
+  type DupeMember = { id: number; name: string; email: string | null; status: string; propertyCount: number };
+  const [mergeDialog, setMergeDialog] = useState<{ email: string; members: DupeMember[]; targetId: number | null } | null>(null);
+  const mergeMut = trpc.investors.merge.useMutation({
+    onSuccess: () => {
+      utils.investors.list.invalidate();
+      refetchDupes();
+      setMergeDialog(null);
+      toast.success("Investors merged successfully");
+    },
+    onError: () => toast.error("Merge failed"),
+  });
 
   // CSV Import dialog
   const [csvOpen, setCsvOpen] = useState(false);
@@ -280,33 +300,50 @@ export default function Settings() {
 
         {/* Tabs */}
         <div className="flex gap-1 mb-5 border-b border-slate-200">
-          {(["investors", "properties"] as AdminTab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setSearch(""); }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors
-                ${tab === t ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
-            >
-              {t === "investors" ? <Users className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />}
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-              <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-mono">
-                {t === "investors" ? (investors?.length ?? 0) : (properties?.length ?? 0)}
-              </span>
-            </button>
-          ))}
+          <button
+            onClick={() => { setTab("investors"); setSearch(""); }}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors
+              ${tab === "investors" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Investors
+            <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-mono">{investors?.length ?? 0}</span>
+          </button>
+          <button
+            onClick={() => { setTab("properties"); setSearch(""); }}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors
+              ${tab === "properties" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            Properties
+            <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-mono">{properties?.length ?? 0}</span>
+          </button>
+          <button
+            onClick={() => { setTab("duplicates"); setSearch(""); }}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors
+              ${tab === "duplicates" ? "border-amber-500 text-amber-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
+          >
+            <GitMerge className="w-3.5 h-3.5" />
+            Duplicates
+            {(duplicates?.length ?? 0) > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-mono">{duplicates?.length}</span>
+            )}
+          </button>
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder={tab === "investors" ? "Search investors…" : "Search properties…"}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        {/* Search bar — hidden on duplicates tab */}
+        {tab !== "duplicates" && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder={tab === "investors" ? "Search investors…" : "Search properties…"}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
 
         {/* ── INVESTORS TAB ── */}
         {tab === "investors" && (
@@ -458,7 +495,154 @@ export default function Settings() {
             </table>
           </div>
         )}
+
+        {/* ── DUPLICATES TAB ── */}
+        {tab === "duplicates" && (
+          <div className="space-y-4">
+            {/* Explainer banner */}
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="text-sm text-amber-800">
+                <span className="font-semibold">Duplicate email scan</span> — these investors share the same email address.
+                Many are intentional (separate legal entities for the same person). Review each group and merge only when the records truly represent the same investor.
+                The <span className="font-semibold">Keep (primary)</span> record retains all property links from the merged records.
+              </div>
+            </div>
+
+            {dupLoading && (
+              <div className="flex items-center justify-center py-16 text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Scanning for duplicates…
+              </div>
+            )}
+
+            {!dupLoading && (!duplicates || duplicates.length === 0) && (
+              <div className="flex flex-col items-center py-16 text-slate-400">
+                <GitMerge className="w-8 h-8 mb-2 opacity-40" />
+                <p className="text-sm font-medium">No duplicate emails found</p>
+                <p className="text-xs mt-1">All investor email addresses are unique.</p>
+              </div>
+            )}
+
+            {!dupLoading && duplicates && duplicates.map((group) => (
+              <div key={group.email} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                {/* Group header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-slate-700">{group.email}</span>
+                    <span className="px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-medium">
+                      {group.members.length} records
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMergeDialog({ email: group.email, members: group.members, targetId: group.members[0]?.id ?? null })}
+                  >
+                    <GitMerge className="w-3.5 h-3.5 mr-1.5" />
+                    Merge…
+                  </Button>
+                </div>
+                {/* Member rows */}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Name</th>
+                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Status</th>
+                      <th className="text-right px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Properties</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.members.map((m, idx) => (
+                      <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {idx === 0 && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600 border border-blue-200 font-medium">
+                                <Crown className="w-2.5 h-2.5" /> Primary
+                              </span>
+                            )}
+                            <Link href={`/investor/${m.id}`} className="font-medium text-slate-800 hover:text-blue-600 hover:underline">
+                              {m.name}
+                            </Link>
+                            <span className="text-xs text-slate-400 font-mono">#{m.id}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 hidden sm:table-cell">
+                          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${
+                            m.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                            m.status === "deceased" ? "bg-slate-100 text-slate-500 border-slate-200" :
+                            "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}>{m.status}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono text-slate-600">{Number(m.propertyCount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Merge Investor Dialog */}
+      <Dialog open={!!mergeDialog} onOpenChange={(o) => !o && setMergeDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitMerge className="w-4 h-4 text-amber-600" />
+              Merge Investors
+            </DialogTitle>
+          </DialogHeader>
+          {mergeDialog && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-slate-600">
+                Select the <span className="font-semibold">primary record</span> to keep. All property links, notes, distributions, and documents from the other records will be moved to it. The other records will be permanently deleted.
+              </p>
+              <div className="space-y-2">
+                {mergeDialog.members.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMergeDialog({ ...mergeDialog, targetId: m.id })}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                      mergeDialog.targetId === m.id
+                        ? "border-blue-400 bg-blue-50 text-blue-900"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {mergeDialog.targetId === m.id && <Crown className="w-3.5 h-3.5 text-blue-600" />}
+                      <span className="font-medium">{m.name}</span>
+                      <span className="text-xs text-slate-400 font-mono">#{m.id}</span>
+                    </div>
+                    <span className="text-xs text-slate-500">{Number(m.propertyCount)} prop{Number(m.propertyCount) !== 1 ? "s" : ""}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
+                <strong>This action is permanent.</strong> The non-primary records will be deleted after all their data is transferred.
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeDialog(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={!mergeDialog?.targetId || mergeMut.isPending}
+              onClick={() => {
+                if (!mergeDialog?.targetId) return;
+                const sourceIds = mergeDialog.members.map((m) => m.id).filter((id) => id !== mergeDialog.targetId);
+                mergeMut.mutate({ targetId: mergeDialog.targetId, sourceIds });
+              }}
+            >
+              {mergeMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <GitMerge className="w-4 h-4 mr-1" />}
+              Merge & Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Investor Dialog */}
       <Dialog open={!!editInv} onOpenChange={(o) => !o && setEditInv(null)}>

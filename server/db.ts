@@ -563,3 +563,90 @@ export async function getInvestorFinancialSummary(investorId: number) {
 
   return { totalDistributions, distributionsByYear };
 }
+
+// ─── Duplicate investor detection & merge ────────────────────────────────────
+
+export async function findDuplicateInvestors() {
+  const db = await getDb();
+  if (!db) return [];
+
+  // Get all investors that share an email with at least one other investor
+  const dupeRows = await db
+    .select({
+      id: investors.id,
+      name: investors.name,
+      email: investors.email,
+      phone: investors.phone,
+      status: investors.status,
+      adminNotes: investors.adminNotes,
+      propertyCount: sql<number>`(SELECT COUNT(*) FROM ${propertyInvestors} pi WHERE pi.investor_id = ${investors.id})`,
+    })
+    .from(investors)
+    .where(
+      sql`${investors.email} IN (
+        SELECT email FROM ${investors} AS i2
+        WHERE i2.email IS NOT NULL AND i2.email != ''
+        GROUP BY i2.email HAVING COUNT(*) > 1
+      )`
+    )
+    .orderBy(asc(investors.email), asc(investors.id));
+
+  // Group by email
+  const groups: Record<string, typeof dupeRows> = {};
+  for (const row of dupeRows) {
+    const key = row.email!;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(row);
+  }
+
+  return Object.entries(groups).map(([email, members]) => ({ email, members }));
+}
+
+/**
+ * Merge all `sourceIds` into `targetId`:
+ * - Re-point property_investors, investor_notes, distributions, documents
+ * - De-duplicate property_investors (skip if target already has that property)
+ * - Delete the source investor records
+ */
+export async function mergeInvestors(targetId: number, sourceIds: number[]) {
+  const db = await getDb();
+  if (!db) return;
+  if (sourceIds.length === 0) return;
+
+  for (const srcId of sourceIds) {
+    // Get existing property links on target to avoid duplicates
+    const targetLinks = await db
+      .select({ propertyId: propertyInvestors.propertyId })
+      .from(propertyInvestors)
+      .where(eq(propertyInvestors.investorId, targetId));
+    const targetPropIds = new Set(targetLinks.map((l) => l.propertyId));
+
+    // Get source property links
+    const srcLinks = await db
+      .select()
+      .from(propertyInvestors)
+      .where(eq(propertyInvestors.investorId, srcId));
+
+    for (const link of srcLinks) {
+      if (targetPropIds.has(link.propertyId)) {
+        // Target already has this property — just delete the source link
+        await db.delete(propertyInvestors).where(eq(propertyInvestors.id, link.id));
+      } else {
+        // Re-point to target
+        await db
+          .update(propertyInvestors)
+          .set({ investorId: targetId })
+          .where(eq(propertyInvestors.id, link.id));
+        targetPropIds.add(link.propertyId);
+      }
+    }
+
+    // Re-point notes, distributions, documents
+    await db.update(investorNotes).set({ investorId: targetId }).where(eq(investorNotes.investorId, srcId));
+    await db.update(distributions).set({ investorId: targetId }).where(eq(distributions.investorId, srcId));
+    await db.update(documents).set({ investorId: targetId }).where(eq(documents.investorId, srcId));
+
+    // Delete the source investor
+    await db.delete(investors).where(eq(investors.id, srcId));
+  }
+}

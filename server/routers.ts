@@ -26,6 +26,8 @@ import {
   createInvestor,
   deleteInvestor,
   getInvestorFinancialSummary,
+  findDuplicateInvestors,
+  mergeInvestors,
 } from "./db";
 
 export const appRouter = router({
@@ -145,6 +147,19 @@ export const appRouter = router({
     financialSummary: publicProcedure
       .input(z.object({ id: z.number().int() }))
       .query(({ input }) => getInvestorFinancialSummary(input.id)),
+
+    findDuplicates: publicProcedure
+      .query(() => findDuplicateInvestors()),
+
+    merge: publicProcedure
+      .input(z.object({
+        targetId: z.number().int(),
+        sourceIds: z.array(z.number().int()).min(1),
+      }))
+      .mutation(async ({ input }) => {
+        await mergeInvestors(input.targetId, input.sourceIds);
+        return { success: true };
+      }),
   }),
 
   // ─── Notes ─────────────────────────────────────────────────────────────────

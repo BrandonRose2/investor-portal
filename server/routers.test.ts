@@ -46,6 +46,14 @@ vi.mock("./db", () => ({
   createInvestor: vi.fn().mockResolvedValue({ id: 10 }),
   deleteInvestor: vi.fn().mockResolvedValue({ id: 1 }),
   getInvestorFinancialSummary: vi.fn().mockResolvedValue({ totalDistributions: 5000, distributionCount: 1 }),
+  findDuplicateInvestors: vi.fn().mockResolvedValue([
+    { email: "test@example.com", members: [
+      { id: 1, name: "Investor A", email: "test@example.com", status: "active", propertyCount: 2 },
+      { id: 2, name: "Investor B", email: "test@example.com", status: "active", propertyCount: 1 },
+    ]},
+  ]),
+  mergeInvestors: vi.fn().mockResolvedValue(undefined),
+  renameDocument: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ── Mock storage ─────────────────────────────────────────────────────────────
@@ -203,6 +211,29 @@ describe("investors.financialSummary", () => {
     const caller = await getCaller(makeCtx());
     const result = await caller.investors.financialSummary({ id: 1 });
     expect(result).toHaveProperty("totalDistributions", 5000);
+  });
+});
+
+describe("investors.findDuplicates", () => {
+  it("returns groups of investors sharing the same email", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.findDuplicates();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result[0]).toHaveProperty("email", "test@example.com");
+    expect(result[0].members).toHaveLength(2);
+  });
+});
+
+describe("investors.merge", () => {
+  it("merges source investors into target and returns success", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.merge({ targetId: 1, sourceIds: [2] });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("rejects empty sourceIds array", async () => {
+    const caller = await getCaller(makeCtx());
+    await expect(caller.investors.merge({ targetId: 1, sourceIds: [] })).rejects.toThrow();
   });
 });
 
