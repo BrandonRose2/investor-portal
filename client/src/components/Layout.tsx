@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Building2, Users, Menu, X, Settings2, FileText, Printer } from "lucide-react";
 import { usePrint } from "@/contexts/PrintContext";
-import PrintReport from "@/components/PrintReport";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -130,8 +129,6 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
 
-      {/* Hidden print report — rendered to DOM, shown only via @media print */}
-      {payload && <PrintReport {...payload} />}
     </div>
   );
 }

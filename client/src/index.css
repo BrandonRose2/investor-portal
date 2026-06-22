@@ -178,10 +178,10 @@
 
 /* ─── Print styles ─────────────────────────────────────────────────────────── */
 @media print {
-  /* Hide everything except the print report */
+  /* Hide the entire app, show only the print portal */
   body > * { display: none !important; }
-  #root > * { display: none !important; }
-  #print-report-root { display: block !important; }
+  #print-portal { display: block !important; }
+  #print-portal #print-report-root { display: block !important; }
 
   /* Reset page */
   @page {
@@ -373,7 +373,7 @@
   }
 }
 
-/* Screen: hide the print report root entirely */
+/* Screen: hide the print portal entirely */
 @media screen {
-  #print-report-root { display: none; }
+  #print-portal { display: none; }
 }
