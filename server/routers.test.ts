@@ -21,7 +21,7 @@ vi.mock("./db", () => ({
   getInvestorById: vi.fn().mockResolvedValue({
     id: 1, name: "Marc Menowitz", email: "marc@example.com", status: "active", phone: null, properties: [],
   }),
-  updateInvestorStatus: vi.fn().mockResolvedValue({ id: 1, status: "deceased" }),
+  updateInvestorStatus: vi.fn().mockImplementation((_id, status) => Promise.resolve({ id: 1, status })),
   updateInvestorInfo: vi.fn().mockResolvedValue({ id: 1, name: "Marc Menowitz Updated" }),
   listNotes: vi.fn().mockResolvedValue([
     { id: 1, investorId: 1, content: "Test note", authorName: "Admin", createdAt: new Date() },
@@ -122,23 +122,17 @@ describe("investors.getById", () => {
   });
 });
 
-describe("investors.updateStatus (admin only)", () => {
-  it("allows admin to update investor status", async () => {
-    const caller = await getCaller(makeCtx(makeUser({ role: "admin" })));
+describe("investors.updateStatus (public — PIN-gated on frontend)", () => {
+  it("allows any caller to update investor status", async () => {
+    const caller = await getCaller(makeCtx());
     const result = await caller.investors.updateStatus({ id: 1, status: "deceased" });
     expect(result).toHaveProperty("status", "deceased");
   });
 
-  it("rejects non-admin users", async () => {
-    const caller = await getCaller(makeCtx(makeUser({ role: "user" })));
-    await expect(caller.investors.updateStatus({ id: 1, status: "deceased" }))
-      .rejects.toThrow(TRPCError);
-  });
-
-  it("rejects unauthenticated callers", async () => {
+  it("also works for unauthenticated callers", async () => {
     const caller = await getCaller(makeCtx(null));
-    await expect(caller.investors.updateStatus({ id: 1, status: "deceased" }))
-      .rejects.toThrow(TRPCError);
+    const result = await caller.investors.updateStatus({ id: 1, status: "transferred" });
+    expect(result).toHaveProperty("status", "transferred");
   });
 });
 
@@ -151,23 +145,23 @@ describe("notes.list", () => {
   });
 });
 
-describe("notes.create (protected)", () => {
+describe("notes.create (public — PIN-gated on frontend)", () => {
   it("allows authenticated users to create notes", async () => {
     const caller = await getCaller(makeCtx(makeUser()));
     const result = await caller.notes.create({ investorId: 1, content: "New note" });
     expect(result).toHaveProperty("content", "New note");
   });
 
-  it("rejects unauthenticated callers", async () => {
+  it("also allows unauthenticated callers to create notes", async () => {
     const caller = await getCaller(makeCtx(null));
-    await expect(caller.notes.create({ investorId: 1, content: "Note" }))
-      .rejects.toThrow(TRPCError);
+    const result = await caller.notes.create({ investorId: 1, content: "Anon note" });
+    expect(result).toHaveProperty("investorId", 1);
   });
 });
 
-describe("notes.delete (admin only)", () => {
-  it("allows admin to delete notes", async () => {
-    const caller = await getCaller(makeCtx(makeUser({ role: "admin" })));
+describe("notes.delete (public — PIN-gated on frontend)", () => {
+  it("allows any caller to delete notes", async () => {
+    const caller = await getCaller(makeCtx());
     const result = await caller.notes.delete({ id: 1 });
     expect(result).toHaveProperty("id", 1);
   });

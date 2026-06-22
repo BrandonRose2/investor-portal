@@ -2,7 +2,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 import {
   listProperties,
@@ -51,7 +51,7 @@ export const appRouter = router({
       .input(z.object({ id: z.string() }))
       .query(({ input }) => getPropertyById(input.id)),
 
-    create: adminProcedure
+    create: publicProcedure
       .input(z.object({
         id: z.string(),
         name: z.string(),
@@ -62,7 +62,7 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => createProperty(input)),
 
-    update: adminProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.string(),
         name: z.string().optional(),
@@ -75,7 +75,7 @@ export const appRouter = router({
         return updateProperty(id, data);
       }),
 
-    delete: adminProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.string() }))
       .mutation(({ input }) => deleteProperty(input.id)),
   }),
@@ -91,14 +91,14 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int() }))
       .query(({ input }) => getInvestorById(input.id)),
 
-    updateStatus: adminProcedure
+    updateStatus: publicProcedure
       .input(z.object({
         id: z.number().int(),
         status: z.enum(["active", "deceased", "transferred", "bought_out"]),
       }))
       .mutation(({ input }) => updateInvestorStatus(input.id, input.status)),
 
-    updateInfo: adminProcedure
+    updateInfo: publicProcedure
       .input(z.object({
         id: z.number().int(),
         name: z.string().optional(),
@@ -111,7 +111,7 @@ export const appRouter = router({
         return updateInvestorInfo(id, data);
       }),
 
-    create: adminProcedure
+    create: publicProcedure
       .input(z.object({
         name: z.string(),
         email: z.string().optional().nullable(),
@@ -121,11 +121,11 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => createInvestor(input)),
 
-    delete: adminProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(({ input }) => deleteInvestor(input.id)),
 
-    upsertPropertyLink: adminProcedure
+    upsertPropertyLink: publicProcedure
       .input(z.object({
         propertyId: z.string(),
         investorId: z.number().int(),
@@ -134,7 +134,7 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => upsertPropertyInvestor(input)),
 
-    removePropertyLink: adminProcedure
+    removePropertyLink: publicProcedure
       .input(z.object({
         propertyId: z.string(),
         investorId: z.number().int(),
@@ -153,21 +153,21 @@ export const appRouter = router({
       .input(z.object({ investorId: z.number().int() }))
       .query(({ input }) => listNotes(input.investorId)),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({
         investorId: z.number().int(),
         propertyId: z.string().optional().nullable(),
         content: z.string().min(1),
       }))
-      .mutation(({ input, ctx }) =>
+      .mutation(({ input }) =>
         createNote({
           ...input,
-          authorId: ctx.user.id,
-          authorName: ctx.user.name ?? "Admin",
+          authorId: null,
+          authorName: "Admin",
         })
       ),
 
-    delete: adminProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(({ input }) => deleteNote(input.id)),
   }),
@@ -182,7 +182,7 @@ export const appRouter = router({
       }))
       .query(({ input }) => listDistributions(input)),
 
-    create: adminProcedure
+    create: publicProcedure
       .input(z.object({
         propertyId: z.string(),
         investorId: z.number().int(),
@@ -193,7 +193,7 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => createDistribution(input)),
 
-    importCsv: adminProcedure
+    importCsv: publicProcedure
       .input(z.object({
         rows: z.array(z.object({
           propertyId: z.string(),
@@ -209,7 +209,7 @@ export const appRouter = router({
         return { imported: results.filter(Boolean).length };
       }),
 
-    delete: adminProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(({ input }) => deleteDistribution(input.id)),
   }),
