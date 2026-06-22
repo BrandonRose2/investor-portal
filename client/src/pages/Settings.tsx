@@ -320,6 +320,7 @@ export default function Settings() {
                     </button>
                   </th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden sm:table-cell">Email</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">Phone</th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Status</th>
                   <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Props</th>
                   <th className="px-3 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide text-right">Actions</th>
@@ -346,6 +347,7 @@ export default function Settings() {
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-slate-500 hidden sm:table-cell truncate max-w-xs">{inv.email ?? "—"}</td>
+                        <td className="px-4 py-3 text-slate-500 hidden md:table-cell truncate max-w-xs">{inv.phone ?? "—"}</td>
                         <td className="px-4 py-3">
                           <select
                             value={inv.status}
@@ -361,7 +363,7 @@ export default function Settings() {
                         <td className="px-3 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: "" })}
+                              onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: inv.phone ?? "" })}
                               className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                               title="Edit"
                             >
@@ -379,7 +381,7 @@ export default function Settings() {
                       </tr>
                       {expanded && (
                         <tr key={`${inv.id}-exp`} className="bg-blue-50/30">
-                          <td colSpan={6} className="px-8 py-3">
+                          <td colSpan={7} className="px-8 py-3">
                             <InvestorExpandedRow investorId={inv.id} />
                           </td>
                         </tr>

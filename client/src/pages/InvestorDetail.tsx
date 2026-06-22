@@ -313,31 +313,29 @@ export default function InvestorDetail() {
             <h2 className="text-sm font-semibold text-slate-700">Notes Timeline</h2>
           </div>
 
-          {/* Add note — only for logged-in users */}
-          {user && (
-            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-              <div className="flex gap-3">
-                <textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Add a note…"
-                  rows={2}
-                  className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
-                <button
-                  onClick={() => {
-                    if (!noteContent.trim()) return;
-                    createNote.mutate({ investorId, content: noteContent.trim() });
-                  }}
-                  disabled={!noteContent.trim() || createNote.isPending}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-start"
-                >
-                  {createNote.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  Add
-                </button>
-              </div>
+          {/* Add note */}
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex gap-3">
+              <textarea
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                placeholder="Add a note…"
+                rows={2}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <button
+                onClick={() => {
+                  if (!noteContent.trim()) return;
+                  createNote.mutate({ investorId, content: noteContent.trim() });
+                }}
+                disabled={!noteContent.trim() || createNote.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-start"
+              >
+                {createNote.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Add
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Notes list */}
           <div className="divide-y divide-slate-50">

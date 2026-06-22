@@ -166,6 +166,7 @@ export async function listInvestors(search?: string) {
       id: investors.id,
       name: investors.name,
       email: investors.email,
+      phone: investors.phone,
       status: investors.status,
       propertyCount: sql<number>`COUNT(DISTINCT ${propertyInvestors.propertyId})`,
     })
