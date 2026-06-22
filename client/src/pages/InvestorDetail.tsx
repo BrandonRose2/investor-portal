@@ -84,6 +84,9 @@ export default function InvestorDetail() {
       utils.notes.list.invalidate({ investorId });
       setNoteContent("");
     },
+    onError: (err) => {
+      alert("Failed to add note: " + err.message);
+    },
   });
 
   const deleteNote = trpc.notes.delete.useMutation({
@@ -367,15 +370,13 @@ export default function InvestorDetail() {
                     </div>
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.content}</p>
                   </div>
-                  {isAdmin && (
-                    <button
-                      onClick={() => deleteNote.mutate({ id: note.id })}
-                      className="shrink-0 p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      title="Delete note"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => deleteNote.mutate({ id: note.id })}
+                    className="shrink-0 p-1 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Delete note"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               ))
             )}
