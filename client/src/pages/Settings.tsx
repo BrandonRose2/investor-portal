@@ -184,9 +184,7 @@ export default function Settings() {
     onError: () => toast.error("CSV import failed"),
   });
 
-  if (!unlocked) return <PinLock onUnlock={() => setUnlocked(true)} />;
-
-  // Sort + filter investors
+  // Sort + filter investors — must be above any early return (React hooks rules)
   const filteredInvestors = useMemo(() => {
     if (!investors) return [];
     let list = [...investors];
@@ -205,6 +203,8 @@ export default function Settings() {
       (p) => p.name.toLowerCase().includes(q) || p.entityName.toLowerCase().includes(q) || (p.entityEin ?? "").includes(q)
     );
   }, [properties, search]);
+
+  if (!unlocked) return <PinLock onUnlock={() => setUnlocked(true)} />;
 
   function toggleSort() {
     setSortDir((d) => d === null ? "asc" : d === "asc" ? "desc" : null);
