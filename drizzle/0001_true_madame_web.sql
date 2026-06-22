@@ -1,0 +1,1 @@
+ALTER TABLE `investors` ADD `admin_notes` text;

@@ -168,6 +168,7 @@ export async function listInvestors(search?: string) {
       email: investors.email,
       phone: investors.phone,
       status: investors.status,
+      adminNotes: investors.adminNotes,
       propertyCount: sql<number>`COUNT(DISTINCT ${propertyInvestors.propertyId})`,
     })
     .from(investors)
@@ -221,7 +222,7 @@ export async function updateInvestorStatus(
 
 export async function updateInvestorInfo(
   id: number,
-  data: { name?: string; email?: string | null; phone?: string | null; address?: string | null }
+  data: { name?: string; email?: string | null; phone?: string | null; address?: string | null; adminNotes?: string | null }
 ) {
   const db = await getDb();
   if (!db) return;

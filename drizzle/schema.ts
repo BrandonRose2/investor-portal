@@ -57,6 +57,7 @@ export const investors = mysqlTable("investors", {
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 32 }),
   address: text("address"),
+  adminNotes: text("admin_notes"),
   status: mysqlEnum("status", ["active", "deceased", "transferred", "bought_out"]).default("active").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

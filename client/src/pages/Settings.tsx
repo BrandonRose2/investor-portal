@@ -159,7 +159,7 @@ export default function Settings() {
   });
 
   // Edit investor dialog
-  const [editInv, setEditInv] = useState<{ id: number; name: string; email: string; phone: string } | null>(null);
+  const [editInv, setEditInv] = useState<{ id: number; name: string; email: string; phone: string; adminNotes: string } | null>(null);
   const updateInfo = trpc.investors.updateInfo.useMutation({
     onSuccess: () => { utils.investors.list.invalidate(); setEditInv(null); toast.success("Investor updated"); },
     onError: () => toast.error("Failed to update investor"),
@@ -328,6 +328,7 @@ export default function Settings() {
                   </th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden sm:table-cell">Email</th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">Phone</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden lg:table-cell">Notes</th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Status</th>
                   <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Props</th>
                   <th className="px-3 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide text-right">Actions</th>
@@ -355,6 +356,9 @@ export default function Settings() {
                         </td>
                         <td className="px-4 py-3 text-slate-500 hidden sm:table-cell truncate max-w-xs">{inv.email ?? "—"}</td>
                         <td className="px-4 py-3 text-slate-500 hidden md:table-cell truncate max-w-xs">{inv.phone ?? "—"}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs hidden lg:table-cell max-w-[160px] truncate">
+                          {inv.adminNotes ? (inv.adminNotes.length > 40 ? inv.adminNotes.slice(0, 40) + "…" : inv.adminNotes) : "—"}
+                        </td>
                         <td className="px-4 py-3">
                           <select
                             value={inv.status}
@@ -370,7 +374,7 @@ export default function Settings() {
                         <td className="px-3 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: inv.phone ?? "" })}
+                              onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: inv.phone ?? "", adminNotes: inv.adminNotes ?? "" })}
                               className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                               title="Edit"
                             >
@@ -476,12 +480,22 @@ export default function Settings() {
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Phone</label>
                 <Input value={editInv.phone} onChange={(e) => setEditInv({ ...editInv, phone: e.target.value })} />
               </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Notes</label>
+                <textarea
+                  value={editInv.adminNotes}
+                  onChange={(e) => setEditInv({ ...editInv, adminNotes: e.target.value })}
+                  rows={3}
+                  placeholder="Internal notes about this investor…"
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditInv(null)}>Cancel</Button>
             <Button
-              onClick={() => editInv && updateInfo.mutate({ id: editInv.id, name: editInv.name, email: editInv.email || null, phone: editInv.phone || null })}
+              onClick={() => editInv && updateInfo.mutate({ id: editInv.id, name: editInv.name, email: editInv.email || null, phone: editInv.phone || null, adminNotes: editInv.adminNotes || null })}
               disabled={updateInfo.isPending}
             >
               {updateInfo.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}

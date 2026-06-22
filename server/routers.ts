@@ -105,6 +105,7 @@ export const appRouter = router({
         email: z.string().optional().nullable(),
         phone: z.string().optional().nullable(),
         address: z.string().optional().nullable(),
+        adminNotes: z.string().optional().nullable(),
       }))
       .mutation(({ input }) => {
         const { id, ...data } = input;
