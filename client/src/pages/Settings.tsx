@@ -252,13 +252,13 @@ export default function Settings() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {tab === "investors" && isAdmin && (
+            {tab === "investors" && (
               <Button size="sm" variant="outline" onClick={() => setCsvOpen(true)}>
                 <Upload className="w-3.5 h-3.5 mr-1.5" />
                 Import CSV
               </Button>
             )}
-            {tab === "investors" && isAdmin && (
+            {tab === "investors" && (
               <Button size="sm" onClick={() => setAddInvOpen(true)}>
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Add Investor
@@ -347,40 +347,34 @@ export default function Settings() {
                         </td>
                         <td className="px-4 py-3 text-slate-500 hidden sm:table-cell truncate max-w-xs">{inv.email ?? "—"}</td>
                         <td className="px-4 py-3">
-                          {isAdmin ? (
-                            <select
-                              value={inv.status}
-                              onChange={(e) => updateStatus.mutate({ id: inv.id, status: e.target.value as any })}
-                              className={`text-xs px-2 py-1 rounded border font-medium cursor-pointer ${badge.cls}`}
-                            >
-                              {STATUS_OPTIONS.map((s) => (
-                                <option key={s.value} value={s.value}>{s.label}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs border ${badge.cls}`}>{badge.label}</span>
-                          )}
+                          <select
+                            value={inv.status}
+                            onChange={(e) => updateStatus.mutate({ id: inv.id, status: e.target.value as any })}
+                            className={`text-xs px-2 py-1 rounded border font-medium cursor-pointer ${badge.cls}`}
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-slate-600">{Number(inv.propertyCount)}</td>
                         <td className="px-3 py-3 text-right">
-                          {isAdmin && (
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: "" })}
-                                className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                title="Edit"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => setConfirmDelete({ type: "investor", id: inv.id, name: inv.name })}
-                                className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: "" })}
+                              className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete({ type: "investor", id: inv.id, name: inv.name })}
+                              className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {expanded && (
@@ -428,15 +422,13 @@ export default function Settings() {
                     </td>
                     <td className="px-5 py-3 text-right font-mono text-slate-600">{Number(prop.investorCount)}</td>
                     <td className="px-3 py-3 text-right">
-                      {isAdmin && (
-                        <button
-                          onClick={() => setConfirmDelete({ type: "property", id: prop.id, name: prop.name })}
-                          className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setConfirmDelete({ type: "property", id: prop.id, name: prop.name })}
+                        className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))}
