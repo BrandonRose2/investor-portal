@@ -173,6 +173,13 @@ export default function Settings() {
     onError: () => toast.error("Failed to add investor"),
   });
 
+  // Edit property dialog
+  const [editProp, setEditProp] = useState<{ id: string; name: string; entityName: string; entityEin: string } | null>(null);
+  const updatePropertyMut = trpc.properties.update.useMutation({
+    onSuccess: () => { utils.properties.list.invalidate(); setEditProp(null); toast.success("Property updated"); },
+    onError: () => toast.error("Failed to update property"),
+  });
+
   // Delete confirmation
   const [confirmDelete, setConfirmDelete] = useState<{ type: "investor" | "property"; id: number | string; name: string } | null>(null);
 
@@ -424,13 +431,22 @@ export default function Settings() {
                     </td>
                     <td className="px-5 py-3 text-right font-mono text-slate-600">{Number(prop.investorCount)}</td>
                     <td className="px-3 py-3 text-right">
-                      <button
-                        onClick={() => setConfirmDelete({ type: "property", id: prop.id, name: prop.name })}
-                        className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setEditProp({ id: prop.id, name: prop.name, entityName: prop.entityName ?? "", entityEin: prop.entityEin ?? "" })}
+                          className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          title="Edit property"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({ type: "property", id: prop.id, name: prop.name })}
+                          className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -469,6 +485,41 @@ export default function Settings() {
               disabled={updateInfo.isPending}
             >
               {updateInfo.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Property Dialog */}
+      <Dialog open={!!editProp} onOpenChange={(o) => !o && setEditProp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Property</DialogTitle>
+          </DialogHeader>
+          {editProp && (
+            <div className="space-y-3 py-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Property Name</label>
+                <Input value={editProp.name} onChange={(e) => setEditProp({ ...editProp, name: e.target.value })} placeholder="Property name" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Entity Name</label>
+                <Input value={editProp.entityName} onChange={(e) => setEditProp({ ...editProp, entityName: e.target.value })} placeholder="Entity LLC / LP name" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">EIN</label>
+                <Input value={editProp.entityEin} onChange={(e) => setEditProp({ ...editProp, entityEin: e.target.value })} placeholder="XX-XXXXXXX" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProp(null)}>Cancel</Button>
+            <Button
+              onClick={() => editProp && updatePropertyMut.mutate({ id: editProp.id, name: editProp.name, entityName: editProp.entityName, entityEin: editProp.entityEin || null })}
+              disabled={!editProp?.name.trim() || updatePropertyMut.isPending}
+            >
+              {updatePropertyMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
               Save
             </Button>
           </DialogFooter>
