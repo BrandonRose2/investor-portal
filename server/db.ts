@@ -650,3 +650,178 @@ export async function mergeInvestors(targetId: number, sourceIds: number[]) {
     await db.delete(investors).where(eq(investors.id, srcId));
   }
 }
+
+// ─── Fuzzy name similarity detection ─────────────────────────────────────────
+
+/**
+ * Normalize an investor name for comparison:
+ * - lowercase
+ * - strip common legal suffixes (LLC, LP, Inc, Trust, etc.)
+ * - strip punctuation and extra whitespace
+ * - strip parenthetical annotations like "(Rich Miller)"
+ */
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    // Remove parenthetical content like "(Rich Miller)" or "(Tim Tucker)"
+    .replace(/\s*\([^)]*\)/g, "")
+    // Remove common legal entity suffixes
+    .replace(/\b(llc|lp|l\.p\.|l\.l\.c\.|inc|incorporated|corp|corporation|co\.|company|trust|revocable trust|family trust|living trust|self[- ]directed|retirement (account|plan)|fbo|acct|holdings|investments?|equities|partners?|capital|solutions?|group|fund|associates?|properties|realty|management|services?)\b/g, "")
+    // Remove punctuation except spaces
+    .replace(/[^a-z0-9\s]/g, " ")
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Compute Levenshtein distance between two strings.
+ */
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * Similarity score 0–1 (1 = identical).
+ */
+function similarity(a: string, b: string): number {
+  if (a === b) return 1;
+  if (a.length === 0 && b.length === 0) return 1;
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1;
+  return 1 - levenshtein(a, b) / maxLen;
+}
+
+export type SimilarNameGroup = {
+  reason: string;
+  score: number;
+  members: Array<{
+    id: number;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    status: string;
+    propertyCount: number;
+  }>;
+};
+
+/**
+ * Find pairs/groups of investors whose normalized names are very similar
+ * but are stored as separate records (different IDs).
+ * Returns groups sorted by descending similarity score.
+ */
+export async function findSimilarNameInvestors(threshold = 0.82): Promise<SimilarNameGroup[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: investors.id,
+      name: investors.name,
+      email: investors.email,
+      phone: investors.phone,
+      status: investors.status,
+      propertyCount: sql<number>`(SELECT COUNT(*) FROM ${propertyInvestors} pi WHERE pi.investor_id = ${investors.id})`,
+    })
+    .from(investors)
+    .orderBy(asc(investors.id));
+
+  // Build normalized index
+  const normed = rows.map((r) => ({ ...r, norm: normalizeName(r.name) }));
+
+  // Skip entries whose normalized form is too short to be meaningful
+  const candidates = normed.filter((r) => r.norm.length >= 3);
+
+  const seen = new Set<string>();
+  const groups: SimilarNameGroup[] = [];
+
+  for (let i = 0; i < candidates.length; i++) {
+    for (let j = i + 1; j < candidates.length; j++) {
+      const a = candidates[i];
+      const b = candidates[j];
+
+      // Skip if they already share an email (already surfaced in email-dupe scan)
+      if (a.email && b.email && a.email === b.email) continue;
+
+      const score = similarity(a.norm, b.norm);
+      if (score < threshold) continue;
+
+      // Deduplicate: use sorted ID pair as key
+      const key = [a.id, b.id].sort((x, y) => x - y).join("-");
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      groups.push({
+        reason: `Name similarity ${(score * 100).toFixed(0)}%`,
+        score,
+        members: [
+          { id: a.id, name: a.name, email: a.email ?? null, phone: a.phone ?? null, status: a.status, propertyCount: Number(a.propertyCount) },
+          { id: b.id, name: b.name, email: b.email ?? null, phone: b.phone ?? null, status: b.status, propertyCount: Number(b.propertyCount) },
+        ],
+      });
+    }
+  }
+
+  // Merge overlapping pairs into multi-member groups
+  const merged: SimilarNameGroup[] = [];
+  const usedKeys = new Set<string>();
+
+  for (const g of groups.sort((a, b) => b.score - a.score)) {
+    const ids = g.members.map((m) => m.id);
+    const pairKey = ids.sort((a, b) => a - b).join("-");
+    if (usedKeys.has(pairKey)) continue;
+
+    // Find all other groups that share at least one member with this group
+    const memberIds = new Set(ids);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const other of groups) {
+        const otherIds = other.members.map((m) => m.id);
+        const otherKey = [...otherIds].sort((a, b) => a - b).join("-");
+        if (usedKeys.has(otherKey)) continue;
+        if (otherIds.some((id) => memberIds.has(id))) {
+          otherIds.forEach((id) => memberIds.add(id));
+          usedKeys.add(otherKey);
+          changed = true;
+        }
+      }
+    }
+    usedKeys.add(pairKey);
+
+    const allMembers = candidates
+      .filter((r) => memberIds.has(r.id))
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        email: r.email ?? null,
+        phone: r.phone ?? null,
+        status: r.status,
+        propertyCount: Number(r.propertyCount),
+      }));
+
+    merged.push({
+      reason: g.reason,
+      score: g.score,
+      members: allMembers,
+    });
+  }
+
+  return merged;
+}

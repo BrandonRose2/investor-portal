@@ -28,6 +28,7 @@ import {
   getInvestorFinancialSummary,
   findDuplicateInvestors,
   mergeInvestors,
+  findSimilarNameInvestors,
 } from "./db";
 
 export const appRouter = router({
@@ -150,6 +151,10 @@ export const appRouter = router({
 
     findDuplicates: publicProcedure
       .query(() => findDuplicateInvestors()),
+
+    findSimilarNames: publicProcedure
+      .input(z.object({ threshold: z.number().min(0).max(1).optional() }))
+      .query(({ input }) => findSimilarNameInvestors(input.threshold)),
 
     merge: publicProcedure
       .input(z.object({
