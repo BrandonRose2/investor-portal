@@ -1,5 +1,5 @@
 // Property detail page — fetches from tRPC
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, Building2, Users, Mail, AlertCircle, Info, GitBranch, Loader2, FileText, Download, Eye } from "lucide-react";
 import QuickUploadButton from "@/components/QuickUploadButton";
@@ -8,6 +8,7 @@ import InlineRename from "@/components/InlineRename";
 import Layout from "@/components/Layout";
 import GroveParkOrgChart from "@/components/GroveParkOrgChart";
 import { trpc } from "@/lib/trpc";
+import { usePrint } from "@/contexts/PrintContext";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   active:      { label: "Active",      cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -33,6 +34,30 @@ export default function PropertyDetail() {
   const renameDoc = trpc.documents.rename.useMutation({
     onSuccess: () => utils.documents.list.invalidate({ propertyId: id ?? "" }),
   });
+
+  // Register print payload
+  const { setPayload } = usePrint();
+  useEffect(() => {
+    if (!property) { setPayload(null); return; }
+    setPayload({
+      type: "property",
+      data: {
+        id: property.id,
+        name: property.name,
+        entityName: property.entityName,
+        entityEin: property.entityEin,
+        isGrovePark: property.isGrovePark,
+        investors: property.investors.map((inv) => ({
+          investorId: inv.investorId,
+          investorName: inv.investorName,
+          email: inv.investorEmail,
+          status: inv.investorStatus,
+          pctCapital: inv.pctCapital,
+        })),
+      },
+    });
+    return () => setPayload(null);
+  }, [property, setPayload]);
 
   if (isLoading) {
     return (

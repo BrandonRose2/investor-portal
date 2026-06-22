@@ -2,7 +2,9 @@
 // Design: light mode, blue-700 accent, Inter font, slate palette
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Building2, Users, Menu, X, Settings2, FileText } from "lucide-react";
+import { Building2, Users, Menu, X, Settings2, FileText, Printer } from "lucide-react";
+import { usePrint } from "@/contexts/PrintContext";
+import PrintReport from "@/components/PrintReport";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +23,7 @@ const NAV_BOTTOM = [
 export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { payload, triggerPrint } = usePrint();
 
   function isActive(href: string) {
     const path = href.split("?")[0];
@@ -107,6 +110,17 @@ export default function Layout({ children }: LayoutProps) {
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
               Confidential
             </span>
+            {/* Print button — visible only when a page has registered print data */}
+            {payload && (
+              <button
+                onClick={triggerPrint}
+                title="Print formatted report"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all duration-150"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Print</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -115,6 +129,9 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Hidden print report — rendered to DOM, shown only via @media print */}
+      {payload && <PrintReport {...payload} />}
     </div>
   );
 }

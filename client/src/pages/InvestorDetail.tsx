@@ -2,6 +2,7 @@
 // Includes: status badge, notes timeline, financial summary, properties table
 import { useState } from "react";
 import { Link, useParams } from "wouter";
+import { useEffect } from "react";
 import {
   ArrowLeft, Building2, Users, Mail, ChevronRight, Loader2,
   FileText, Clock, Plus, Trash2, DollarSign, TrendingUp, Download, Eye
@@ -9,6 +10,7 @@ import {
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { usePrint } from "@/contexts/PrintContext";
 import QuickUploadButton from "@/components/QuickUploadButton";
 import DocPreviewModal, { type PreviewDoc } from "@/components/DocPreviewModal";
 import InlineRename from "@/components/InlineRename";
@@ -78,6 +80,48 @@ export default function InvestorDetail() {
     { investorId },
     { enabled: !!investorId }
   );
+
+  // Register print payload whenever data is ready
+  const { setPayload } = usePrint();
+  useEffect(() => {
+    if (!investor) { setPayload(null); return; }
+    setPayload({
+      type: "investor",
+      data: {
+        id: investor.id,
+        name: investor.name,
+        email: investor.email,
+        phone: investor.phone,
+        status: investor.status,
+        adminNotes: (investor as any).adminNotes ?? null,
+        properties: investor.properties.map((p) => ({
+          propertyId: p.propertyId,
+          propertyName: p.propertyName,
+          entityName: p.entityName,
+          pctCapital: p.pctCapital,
+        })),
+        distributions: (distributions ?? []).map((d) => ({
+          year: d.year,
+          amount: d.amount,
+          type: d.type,
+          notes: d.notes,
+          propertyName: (d as any).propertyName ?? null,
+        })),
+        notes: (notes ?? []).map((n) => ({
+          id: n.id,
+          content: n.content,
+          createdAt: n.createdAt,
+        })),
+        financials: financials ? {
+          totalInvested: 0,
+          totalDistributed: financials.totalDistributions ?? 0,
+          propertyCount: investor.properties.length,
+          distributionCount: (distributions ?? []).length,
+        } : null,
+      },
+    });
+    return () => setPayload(null);
+  }, [investor, distributions, notes, financials, setPayload]);
 
   const createNote = trpc.notes.create.useMutation({
     onSuccess: () => {

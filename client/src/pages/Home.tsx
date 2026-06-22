@@ -1,10 +1,11 @@
 // Home page — Properties & Investors directory
 // Fetches from tRPC instead of static data
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Search, Building2, Users, ChevronRight, AlertCircle, Loader2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
+import { usePrint } from "@/contexts/PrintContext";
 
 type Tab = "properties" | "investors";
 
@@ -77,6 +78,26 @@ export default function Home() {
   }, [investorsData, query]);
 
   const isLoading = tab === "properties" ? propLoading : invLoading;
+
+  // Register summary print payload
+  const { setPayload } = usePrint();
+  useEffect(() => {
+    if (!propertiesData) return;
+    setPayload({
+      type: "summary",
+      data: {
+        properties: propertiesData.map((p) => ({
+          id: p.id,
+          name: p.name,
+          entityName: p.entityName,
+          entityEin: p.entityEin,
+          investorCount: (p as any).investorCount ?? (p as any).investors?.length ?? 0,
+        })),
+        totalInvestors: investorsData?.length ?? 0,
+      },
+    });
+    return () => setPayload(null);
+  }, [propertiesData, investorsData, setPayload]);
 
   return (
     <Layout>
