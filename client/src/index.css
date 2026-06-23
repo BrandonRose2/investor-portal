@@ -183,24 +183,40 @@
   #print-portal { display: block !important; }
   #print-portal #print-report-root { display: block !important; }
 
-  /* Reset page */
+  /* Single-page fit: tight margins, small base font */
   @page {
     size: letter portrait;
-    margin: 0.75in 0.75in 0.75in 0.75in;
+    margin: 0.4in 0.4in 0.4in 0.4in;
   }
 
-  body {
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
     background: white !important;
     color: #0f172a !important;
     font-family: "Inter", system-ui, sans-serif !important;
-    font-size: 10pt !important;
-    line-height: 1.5 !important;
+    font-size: 8pt !important;
+    line-height: 1.35 !important;
   }
 
-  /* Report container */
+  /* Report container — fills exactly one page */
+  #print-portal {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  #print-report-root {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
   .print-report {
     width: 100%;
     max-width: 100%;
+    overflow: hidden;
   }
 
   /* Header */
@@ -209,19 +225,19 @@
     justify-content: space-between;
     align-items: flex-start;
     border-bottom: 2px solid #1e40af;
-    padding-bottom: 10pt;
-    margin-bottom: 16pt;
+    padding-bottom: 4pt;
+    margin-bottom: 7pt;
   }
 
   .print-title {
-    font-size: 18pt;
+    font-size: 13pt;
     font-weight: 700;
     color: #0f172a;
-    margin: 0 0 2pt 0;
+    margin: 0 0 1pt 0;
   }
 
   .print-subtitle {
-    font-size: 9pt;
+    font-size: 7pt;
     color: #64748b;
     margin: 0;
     text-transform: uppercase;
@@ -230,56 +246,56 @@
 
   .print-meta-right {
     text-align: right;
-    font-size: 8.5pt;
+    font-size: 7pt;
     color: #475569;
-    line-height: 1.6;
+    line-height: 1.4;
   }
 
   .print-meta-right p { margin: 0; }
 
   /* Sections */
   .print-section {
-    margin-bottom: 14pt;
+    margin-bottom: 6pt;
     page-break-inside: avoid;
   }
 
   .print-section-title {
-    font-size: 9pt;
+    font-size: 7pt;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: #1e40af;
     border-bottom: 1px solid #bfdbfe;
-    padding-bottom: 3pt;
-    margin: 0 0 6pt 0;
+    padding-bottom: 2pt;
+    margin: 0 0 3pt 0;
   }
 
   /* KPI row */
   .print-kpi-row {
     display: flex;
-    gap: 12pt;
+    gap: 6pt;
   }
 
   .print-kpi {
     flex: 1;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 4pt;
-    padding: 6pt 8pt;
+    border-radius: 3pt;
+    padding: 3pt 5pt;
   }
 
   .print-kpi-label {
     display: block;
-    font-size: 7.5pt;
+    font-size: 6.5pt;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin-bottom: 2pt;
+    margin-bottom: 1pt;
   }
 
   .print-kpi-value {
     display: block;
-    font-size: 12pt;
+    font-size: 9pt;
     font-weight: 700;
     color: #0f172a;
   }
@@ -288,18 +304,18 @@
   .print-kv-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 9.5pt;
+    font-size: 7.5pt;
   }
 
   .print-kv-table td {
-    padding: 3pt 6pt;
+    padding: 1.5pt 4pt;
     vertical-align: top;
   }
 
   .print-kv-label {
     font-weight: 600;
     color: #475569;
-    width: 120pt;
+    width: 90pt;
     white-space: nowrap;
   }
 
@@ -307,7 +323,7 @@
   .print-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 8.5pt;
+    font-size: 7pt;
   }
 
   .print-table th {
@@ -315,15 +331,15 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-size: 7.5pt;
+    font-size: 6.5pt;
     color: #475569;
-    padding: 4pt 6pt;
+    padding: 2.5pt 4pt;
     border-bottom: 1px solid #cbd5e1;
     text-align: left;
   }
 
   .print-table td {
-    padding: 3.5pt 6pt;
+    padding: 2pt 4pt;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: top;
   }
@@ -331,27 +347,27 @@
   .print-table tfoot td {
     border-top: 1.5px solid #cbd5e1;
     border-bottom: none;
-    padding-top: 4pt;
+    padding-top: 2.5pt;
   }
 
   .print-table tr:last-child td { border-bottom: none; }
 
   /* Notes */
-  .print-notes { display: flex; flex-direction: column; gap: 5pt; }
+  .print-notes { display: flex; flex-direction: column; gap: 2pt; }
 
   .print-note {
     display: flex;
-    gap: 8pt;
-    font-size: 8.5pt;
-    padding: 4pt 0;
+    gap: 5pt;
+    font-size: 7pt;
+    padding: 2pt 0;
     border-bottom: 1px solid #f1f5f9;
   }
 
   .print-note-date {
     color: #64748b;
     white-space: nowrap;
-    min-width: 70pt;
-    font-size: 8pt;
+    min-width: 55pt;
+    font-size: 6.5pt;
   }
 
   .print-note-content { color: #0f172a; }
@@ -360,14 +376,14 @@
   .print-right { text-align: right !important; }
   .print-mono  { font-family: "Courier New", monospace !important; }
   .print-muted { color: #64748b !important; }
-  .print-upper { text-transform: uppercase !important; font-size: 7.5pt !important; }
+  .print-upper { text-transform: uppercase !important; font-size: 6.5pt !important; }
 
   /* Footer */
   .print-footer {
-    margin-top: 20pt;
-    padding-top: 6pt;
+    margin-top: 6pt;
+    padding-top: 3pt;
     border-top: 1px solid #e2e8f0;
-    font-size: 7.5pt;
+    font-size: 6.5pt;
     color: #94a3b8;
     text-align: center;
   }
