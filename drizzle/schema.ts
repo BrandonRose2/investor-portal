@@ -129,3 +129,21 @@ export const investorNotes = mysqlTable("investor_notes", {
 
 export type InvestorNote = typeof investorNotes.$inferSelect;
 export type InsertInvestorNote = typeof investorNotes.$inferInsert;
+
+// ─── Dismissed Duplicates ─────────────────────────────────────────────────────
+// Stores a stable key for each dismissed duplicate group so it is hidden from
+// future scan results. The key is a sorted comma-separated list of investor IDs
+// (for email groups) or a normalized label string (for name-similarity groups).
+export const dismissedDuplicates = mysqlTable("dismissed_duplicates", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Stable identifier for the group — sorted CSV of member investor IDs. */
+  groupKey: varchar("group_key", { length: 512 }).notNull().unique(),
+  /** Human-readable label stored for the "Dismissed" restore list. */
+  label: varchar("label", { length: 512 }).notNull(),
+  /** 'email' | 'name' — which scan surfaced this group. */
+  scanType: mysqlEnum("scan_type", ["email", "name"]).notNull(),
+  dismissedAt: timestamp("dismissedAt").defaultNow().notNull(),
+});
+
+export type DismissedDuplicate = typeof dismissedDuplicates.$inferSelect;
+export type InsertDismissedDuplicate = typeof dismissedDuplicates.$inferInsert;

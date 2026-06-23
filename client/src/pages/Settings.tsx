@@ -44,6 +44,8 @@ import {
   GitMerge,
   AlertTriangle,
   Crown,
+  EyeOff,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -63,13 +65,14 @@ type SortDir = "asc" | "desc" | null;
 // ── Reusable duplicate group card ─────────────────────────────────────────────
 type DupeMemberCard = { id: number; name: string; email: string | null; status: string; propertyCount: number };
 function DupeGroupCard({
-  label, badge, badgeCls = "bg-amber-100 text-amber-700", members, onMerge,
+  label, badge, badgeCls = "bg-amber-100 text-amber-700", members, onMerge, onDismiss,
 }: {
   label: string;
   badge?: string;
   badgeCls?: string;
   members: DupeMemberCard[];
   onMerge: (members: DupeMemberCard[]) => void;
+  onDismiss: (members: DupeMemberCard[]) => void;
 }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -79,10 +82,16 @@ function DupeGroupCard({
           {badge && <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${badgeCls}`}>{badge}</span>}
           <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${badgeCls}`}>{members.length} records</span>
         </div>
-        <Button size="sm" variant="outline" onClick={() => onMerge(members)}>
-          <GitMerge className="w-3.5 h-3.5 mr-1.5" />
-          Merge…
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" className="text-slate-400 hover:text-slate-600" onClick={() => onDismiss(members)}>
+            <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+            Dismiss
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onMerge(members)}>
+            <GitMerge className="w-3.5 h-3.5 mr-1.5" />
+            Merge…
+          </Button>
+        </div>
       </div>
       <table className="w-full text-sm">
         <thead>
@@ -218,6 +227,10 @@ export default function Settings() {
     { threshold: 0.82 },
     { enabled: tab === "duplicates" }
   );
+  const { data: dismissed, refetch: refetchDismissed } = trpc.investors.listDismissed.useQuery(
+    undefined,
+    { enabled: tab === "duplicates" }
+  );
 
   // Mutations
   const updateStatus = trpc.investors.updateStatus.useMutation({
@@ -270,6 +283,16 @@ export default function Settings() {
       toast.success("Investors merged successfully");
     },
     onError: () => toast.error("Merge failed"),
+  });
+
+  // Dismiss / restore
+  const dismissMut = trpc.investors.dismiss.useMutation({
+    onSuccess: () => { refetchDupes(); refetchSim(); refetchDismissed(); toast.success("Group dismissed"); },
+    onError: () => toast.error("Dismiss failed"),
+  });
+  const restoreMut = trpc.investors.restore.useMutation({
+    onSuccess: () => { refetchDupes(); refetchSim(); refetchDismissed(); toast.success("Group restored"); },
+    onError: () => toast.error("Restore failed"),
   });
 
   // CSV Import dialog
@@ -600,6 +623,7 @@ export default function Settings() {
                     label={group.email}
                     members={group.members}
                     onMerge={(members) => setMergeDialog({ label: group.email, members, targetId: members[0]?.id ?? null })}
+                    onDismiss={(members) => dismissMut.mutate({ memberIds: members.map((m) => m.id), label: group.email, scanType: "email" })}
                   />
                 ))}
               </>
@@ -634,6 +658,7 @@ export default function Settings() {
                     badgeCls="bg-violet-100 text-violet-700"
                     members={group.members}
                     onMerge={(members) => setMergeDialog({ label: group.reason, members, targetId: members[0]?.id ?? null })}
+                    onDismiss={(members) => dismissMut.mutate({ memberIds: members.map((m) => m.id), label: group.reason, scanType: "name" })}
                   />
                 ))}
               </>
@@ -644,6 +669,38 @@ export default function Settings() {
                 <GitMerge className="w-8 h-8 mb-2 opacity-40" />
                 <p className="text-sm font-medium">No duplicates found</p>
                 <p className="text-xs mt-1">All investor records appear unique.</p>
+              </div>
+            )}
+
+            {/* Dismissed groups */}
+            {dismissed && dismissed.length > 0 && (
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <h3 className="text-sm font-bold text-slate-500 flex items-center gap-2 mb-3">
+                  <EyeOff className="w-3.5 h-3.5" />
+                  Dismissed Groups
+                  <span className="text-xs font-mono text-slate-400">({dismissed.length})</span>
+                </h3>
+                <div className="space-y-1.5">
+                  {dismissed.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${
+                          d.scanType === "email" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"
+                        }`}>{d.scanType === "email" ? "Email" : "Name"}</span>
+                        <span className="text-sm text-slate-600 truncate font-mono">{d.label}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-slate-400 hover:text-slate-700 shrink-0"
+                        onClick={() => restoreMut.mutate({ id: d.id })}
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                        Restore
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

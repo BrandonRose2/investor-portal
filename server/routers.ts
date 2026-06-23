@@ -29,6 +29,11 @@ import {
   findDuplicateInvestors,
   mergeInvestors,
   findSimilarNameInvestors,
+  buildGroupKey,
+  listDismissedDuplicates,
+  dismissDuplicateGroup,
+  restoreDismissedGroup,
+  getDismissedKeys,
 } from "./db";
 
 export const appRouter = router({
@@ -150,11 +155,44 @@ export const appRouter = router({
       .query(({ input }) => getInvestorFinancialSummary(input.id)),
 
     findDuplicates: publicProcedure
-      .query(() => findDuplicateInvestors()),
+      .query(async () => {
+        const [groups, dismissed] = await Promise.all([
+          findDuplicateInvestors(),
+          getDismissedKeys(),
+        ]);
+        return groups.filter((g) => !dismissed.has(buildGroupKey(g.members.map((m) => m.id))));
+      }),
 
     findSimilarNames: publicProcedure
       .input(z.object({ threshold: z.number().min(0).max(1).optional() }))
-      .query(({ input }) => findSimilarNameInvestors(input.threshold)),
+      .query(async ({ input }) => {
+        const [groups, dismissed] = await Promise.all([
+          findSimilarNameInvestors(input.threshold),
+          getDismissedKeys(),
+        ]);
+        return groups.filter((g) => !dismissed.has(buildGroupKey(g.members.map((m) => m.id))));
+      }),
+
+    listDismissed: publicProcedure
+      .query(() => listDismissedDuplicates()),
+
+    dismiss: publicProcedure
+      .input(z.object({
+        memberIds: z.array(z.number().int()).min(2),
+        label: z.string(),
+        scanType: z.enum(["email", "name"]),
+      }))
+      .mutation(async ({ input }) => {
+        await dismissDuplicateGroup(input.memberIds, input.label, input.scanType);
+        return { success: true };
+      }),
+
+    restore: publicProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(async ({ input }) => {
+        await restoreDismissedGroup(input.id);
+        return { success: true };
+      }),
 
     merge: publicProcedure
       .input(z.object({

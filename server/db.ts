@@ -9,6 +9,7 @@ import {
   distributions,
   documents,
   investorNotes,
+  dismissedDuplicates,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -824,4 +825,45 @@ export async function findSimilarNameInvestors(threshold = 0.82): Promise<Simila
   }
 
   return merged;
+}
+
+// ─── Dismissed Duplicates ─────────────────────────────────────────────────────
+
+/** Build a stable, sorted key from a list of member IDs. */
+export function buildGroupKey(memberIds: number[]): string {
+  return [...memberIds].sort((a, b) => a - b).join(",");
+}
+
+export async function listDismissedDuplicates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(dismissedDuplicates)
+    .orderBy(desc(dismissedDuplicates.dismissedAt));
+}
+
+export async function dismissDuplicateGroup(
+  memberIds: number[],
+  label: string,
+  scanType: "email" | "name"
+) {
+  const db = await getDb();
+  if (!db) return;
+  const groupKey = buildGroupKey(memberIds);
+  await db
+    .insert(dismissedDuplicates)
+    .values({ groupKey, label, scanType })
+    .onDuplicateKeyUpdate({ set: { label, scanType } });
+}
+
+export async function restoreDismissedGroup(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(dismissedDuplicates).where(eq(dismissedDuplicates.id, id));
+}
+
+export async function getDismissedKeys(): Promise<Set<string>> {
+  const rows = await listDismissedDuplicates();
+  return new Set(rows.map((r) => r.groupKey));
 }

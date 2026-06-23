@@ -59,6 +59,13 @@ vi.mock("./db", () => ({
       { id: 4, name: "Remram, LLC", email: null, phone: null, status: "active", propertyCount: 1 },
     ]},
   ]),
+  buildGroupKey: vi.fn().mockImplementation((ids: number[]) => [...ids].sort((a, b) => a - b).join(",")),
+  listDismissedDuplicates: vi.fn().mockResolvedValue([
+    { id: 1, groupKey: "1,2", label: "test@example.com", scanType: "email", dismissedAt: new Date() },
+  ]),
+  dismissDuplicateGroup: vi.fn().mockResolvedValue(undefined),
+  restoreDismissedGroup: vi.fn().mockResolvedValue(undefined),
+  getDismissedKeys: vi.fn().mockResolvedValue(new Set<string>()),
   renameDocument: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -274,5 +281,41 @@ describe("investors.findSimilarNames", () => {
     const caller = await getCaller(makeCtx());
     const result = await caller.investors.findSimilarNames({ threshold: 0.9 });
     expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("investors.dismiss", () => {
+  it("dismisses a duplicate group and returns success", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.dismiss({
+      memberIds: [1, 2],
+      label: "test@example.com",
+      scanType: "email",
+    });
+    expect(result).toEqual({ success: true });
+  });
+  it("rejects fewer than 2 memberIds", async () => {
+    const caller = await getCaller(makeCtx());
+    await expect(caller.investors.dismiss({ memberIds: [1], label: "x", scanType: "email" })).rejects.toThrow();
+  });
+});
+
+describe("investors.restore", () => {
+  it("restores a dismissed group and returns success", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.restore({ id: 1 });
+    expect(result).toEqual({ success: true });
+  });
+});
+
+describe("investors.listDismissed", () => {
+  it("returns the list of dismissed duplicate groups", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.listDismissed();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result[0]).toHaveProperty("groupKey");
+    expect(result[0]).toHaveProperty("label");
+    expect(result[0]).toHaveProperty("scanType");
   });
 });
