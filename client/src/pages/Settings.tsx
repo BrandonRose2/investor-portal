@@ -60,6 +60,70 @@ const STATUS_OPTIONS = [
 
 type SortDir = "asc" | "desc" | null;
 
+// ── Reusable duplicate group card ─────────────────────────────────────────────
+type DupeMemberCard = { id: number; name: string; email: string | null; status: string; propertyCount: number };
+function DupeGroupCard({
+  label, badge, badgeCls = "bg-amber-100 text-amber-700", members, onMerge,
+}: {
+  label: string;
+  badge?: string;
+  badgeCls?: string;
+  members: DupeMemberCard[];
+  onMerge: (members: DupeMemberCard[]) => void;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-mono font-bold text-slate-700 truncate">{label}</span>
+          {badge && <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${badgeCls}`}>{badge}</span>}
+          <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${badgeCls}`}>{members.length} records</span>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => onMerge(members)}>
+          <GitMerge className="w-3.5 h-3.5 mr-1.5" />
+          Merge…
+        </Button>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100">
+            <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Name</th>
+            <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Status</th>
+            <th className="text-right px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Properties</th>
+          </tr>
+        </thead>
+        <tbody>
+          {members.map((m, idx) => (
+            <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  {idx === 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600 border border-blue-200 font-medium">
+                      <Crown className="w-2.5 h-2.5" /> Primary
+                    </span>
+                  )}
+                  <Link href={`/investor/${m.id}`} className="font-medium text-slate-800 hover:text-blue-600 hover:underline">
+                    {m.name}
+                  </Link>
+                  <span className="text-xs text-slate-400 font-mono">#{m.id}</span>
+                </div>
+              </td>
+              <td className="px-4 py-2.5 hidden sm:table-cell">
+                <span className={`text-xs px-2 py-0.5 rounded border font-medium ${
+                  m.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                  m.status === "deceased" ? "bg-slate-100 text-slate-500 border-slate-200" :
+                  "bg-amber-50 text-amber-700 border-amber-200"
+                }`}>{m.status}</span>
+              </td>
+              <td className="px-4 py-2.5 text-right font-mono text-slate-600">{Number(m.propertyCount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── PIN Lock Screen ────────────────────────────────────────────────────────────
 function PinLock({ onUnlock }: { onUnlock: () => void }) {
   const [digits, setDigits] = useState(["", "", "", ""]);
@@ -150,6 +214,10 @@ export default function Settings() {
     undefined,
     { enabled: tab === "duplicates" }
   );
+  const { data: similarNames, isLoading: simLoading, refetch: refetchSim } = trpc.investors.findSimilarNames.useQuery(
+    { threshold: 0.82 },
+    { enabled: tab === "duplicates" }
+  );
 
   // Mutations
   const updateStatus = trpc.investors.updateStatus.useMutation({
@@ -192,11 +260,12 @@ export default function Settings() {
 
   // Merge dialog
   type DupeMember = { id: number; name: string; email: string | null; status: string; propertyCount: number };
-  const [mergeDialog, setMergeDialog] = useState<{ email: string; members: DupeMember[]; targetId: number | null } | null>(null);
+  const [mergeDialog, setMergeDialog] = useState<{ label: string; members: DupeMember[]; targetId: number | null } | null>(null);
   const mergeMut = trpc.investors.merge.useMutation({
     onSuccess: () => {
       utils.investors.list.invalidate();
       refetchDupes();
+      refetchSim();
       setMergeDialog(null);
       toast.success("Investors merged successfully");
     },
@@ -325,8 +394,10 @@ export default function Settings() {
           >
             <GitMerge className="w-3.5 h-3.5" />
             Duplicates
-            {(duplicates?.length ?? 0) > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-mono">{duplicates?.length}</span>
+            {((duplicates?.length ?? 0) + (similarNames?.length ?? 0)) > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-mono">
+                {(duplicates?.length ?? 0) + (similarNames?.length ?? 0)}
+              </span>
             )}
           </button>
         </div>
@@ -516,72 +587,65 @@ export default function Settings() {
               </div>
             )}
 
-            {!dupLoading && (!duplicates || duplicates.length === 0) && (
-              <div className="flex flex-col items-center py-16 text-slate-400">
-                <GitMerge className="w-8 h-8 mb-2 opacity-40" />
-                <p className="text-sm font-medium">No duplicate emails found</p>
-                <p className="text-xs mt-1">All investor email addresses are unique.</p>
+            {!dupLoading && duplicates && duplicates.length > 0 && (
+              <>
+                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                  Same Email Address
+                  <span className="text-xs font-mono text-slate-400">({duplicates.length} group{duplicates.length !== 1 ? "s" : ""})</span>
+                </h3>
+                {duplicates.map((group) => (
+                  <DupeGroupCard
+                    key={group.email}
+                    label={group.email}
+                    members={group.members}
+                    onMerge={(members) => setMergeDialog({ label: group.email, members, targetId: members[0]?.id ?? null })}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Similar Names section */}
+            {(simLoading) && (
+              <div className="flex items-center justify-center py-10 text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Scanning for similar names…
               </div>
             )}
 
-            {!dupLoading && duplicates && duplicates.map((group) => (
-              <div key={group.email} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                {/* Group header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-slate-700">{group.email}</span>
-                    <span className="px-1.5 py-0.5 rounded text-xs bg-amber-100 text-amber-700 font-medium">
-                      {group.members.length} records
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setMergeDialog({ email: group.email, members: group.members, targetId: group.members[0]?.id ?? null })}
-                  >
-                    <GitMerge className="w-3.5 h-3.5 mr-1.5" />
-                    Merge…
-                  </Button>
+            {!simLoading && similarNames && similarNames.length > 0 && (
+              <>
+                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mt-2">
+                  <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+                  Similar Names
+                  <span className="text-xs font-mono text-slate-400">({similarNames.length} group{similarNames.length !== 1 ? "s" : ""})</span>
+                </h3>
+                <div className="flex items-start gap-3 p-3 bg-violet-50 border border-violet-200 rounded-xl">
+                  <AlertTriangle className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-violet-800">
+                    These investors have very similar names but different records. They may be the same person entered differently, or genuinely distinct entities. Review before merging.
+                  </p>
                 </div>
-                {/* Member rows */}
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Name</th>
-                      <th className="text-left px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide hidden sm:table-cell">Status</th>
-                      <th className="text-right px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wide">Properties</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.members.map((m, idx) => (
-                      <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            {idx === 0 && (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-600 border border-blue-200 font-medium">
-                                <Crown className="w-2.5 h-2.5" /> Primary
-                              </span>
-                            )}
-                            <Link href={`/investor/${m.id}`} className="font-medium text-slate-800 hover:text-blue-600 hover:underline">
-                              {m.name}
-                            </Link>
-                            <span className="text-xs text-slate-400 font-mono">#{m.id}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 hidden sm:table-cell">
-                          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${
-                            m.status === "active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                            m.status === "deceased" ? "bg-slate-100 text-slate-500 border-slate-200" :
-                            "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}>{m.status}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-slate-600">{Number(m.propertyCount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {similarNames.map((group, i) => (
+                  <DupeGroupCard
+                    key={i}
+                    label={group.reason}
+                    badge={`${(group.score * 100).toFixed(0)}% match`}
+                    badgeCls="bg-violet-100 text-violet-700"
+                    members={group.members}
+                    onMerge={(members) => setMergeDialog({ label: group.reason, members, targetId: members[0]?.id ?? null })}
+                  />
+                ))}
+              </>
+            )}
+
+            {!dupLoading && !simLoading && (!duplicates || duplicates.length === 0) && (!similarNames || similarNames.length === 0) && (
+              <div className="flex flex-col items-center py-16 text-slate-400">
+                <GitMerge className="w-8 h-8 mb-2 opacity-40" />
+                <p className="text-sm font-medium">No duplicates found</p>
+                <p className="text-xs mt-1">All investor records appear unique.</p>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -597,6 +661,7 @@ export default function Settings() {
           </DialogHeader>
           {mergeDialog && (
             <div className="space-y-4 py-2">
+              <p className="text-sm text-slate-500 font-mono text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 truncate">{mergeDialog.label}</p>
               <p className="text-sm text-slate-600">
                 Select the <span className="font-semibold">primary record</span> to keep. All property links, notes, distributions, and documents from the other records will be moved to it. The other records will be permanently deleted.
               </p>

@@ -53,6 +53,12 @@ vi.mock("./db", () => ({
     ]},
   ]),
   mergeInvestors: vi.fn().mockResolvedValue(undefined),
+  findSimilarNameInvestors: vi.fn().mockResolvedValue([
+    { reason: "Name similarity 92%", score: 0.92, members: [
+      { id: 3, name: "Remram LLC", email: null, phone: null, status: "active", propertyCount: 3 },
+      { id: 4, name: "Remram, LLC", email: null, phone: null, status: "active", propertyCount: 1 },
+    ]},
+  ]),
   renameDocument: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -250,5 +256,23 @@ describe("auth.me", () => {
     const result = await caller.auth.me();
     expect(result).toHaveProperty("id", 1);
     expect(result).toHaveProperty("role", "admin");
+  });
+});
+
+describe("investors.findSimilarNames", () => {
+  it("returns similar name groups with default threshold", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.findSimilarNames({});
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result[0]).toHaveProperty("reason");
+    expect(result[0]).toHaveProperty("score");
+    expect(result[0]).toHaveProperty("members");
+    expect(result[0].members.length).toBeGreaterThanOrEqual(2);
+  });
+  it("accepts a custom threshold parameter", async () => {
+    const caller = await getCaller(makeCtx());
+    const result = await caller.investors.findSimilarNames({ threshold: 0.9 });
+    expect(Array.isArray(result)).toBe(true);
   });
 });
