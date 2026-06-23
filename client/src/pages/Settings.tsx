@@ -442,7 +442,8 @@ export default function Settings() {
         {/* ── INVESTORS TAB ── */}
         {tab === "investors" && (
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
                   <th className="w-8 px-3 py-2.5" />
@@ -462,7 +463,7 @@ export default function Settings() {
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden lg:table-cell">Notes</th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Status</th>
                   <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Props</th>
-                  <th className="px-3 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide text-right">Actions</th>
+                  <th className="sticky right-0 bg-slate-50 px-3 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide text-right shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.07)]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -502,7 +503,7 @@ export default function Settings() {
                           </select>
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-slate-600">{Number(inv.propertyCount)}</td>
-                        <td className="px-3 py-3 text-right">
+                        <td className="sticky right-0 bg-white px-3 py-3 text-right shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.07)]">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => setEditInv({ id: inv.id, name: inv.name, email: inv.email ?? "", phone: inv.phone ?? "", adminNotes: inv.adminNotes ?? "" })}
@@ -533,6 +534,7 @@ export default function Settings() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
