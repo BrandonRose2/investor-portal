@@ -174,7 +174,7 @@ export default function Home() {
               <Link key={prop.id} href={`/property/${prop.id}`}>
                 <div
                   className="group grid items-center px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer"
-                  style={{ gridTemplateColumns: "0.25rem 1fr 10rem 3.5rem 1rem", gap: "0.75rem" }}
+                  style={{ gridTemplateColumns: "0.25rem 1fr 10rem 14rem 3.5rem 1rem", gap: "0.75rem" }}
                 >
                   {/* Left accent bar */}
                   <div className={`w-1 h-10 rounded-full justify-self-center ${prop.isGrovePark ? "bg-amber-400" : "bg-blue-500"}`} />
@@ -200,6 +200,17 @@ export default function Home() {
                     >
                       EIN {prop.entityEin || "—"}
                     </span>
+                  </div>
+
+                  {/* Latest piNote */}
+                  <div className="hidden lg:flex items-center min-w-0">
+                    {prop.latestPiNote ? (
+                      <span className="text-xs text-amber-700 truncate" title={prop.latestPiNote}>
+                        {prop.latestPiNote.length > 55 ? prop.latestPiNote.slice(0, 55) + "\u2026" : prop.latestPiNote}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-300">—</span>
+                    )}
                   </div>
 
                   {/* Investor count */}

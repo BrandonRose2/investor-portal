@@ -1,7 +1,7 @@
 // Property detail page — fetches from tRPC
 import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
-import { ArrowLeft, Building2, Users, Mail, AlertCircle, Info, GitBranch, Loader2, FileText, Download, Eye } from "lucide-react";
+import { ArrowLeft, Building2, Users, Mail, AlertCircle, Info, GitBranch, Loader2, FileText, Download, Eye, Pencil, StickyNote } from "lucide-react";
 import QuickUploadButton from "@/components/QuickUploadButton";
 import DocPreviewModal, { type PreviewDoc } from "@/components/DocPreviewModal";
 import InlineRename from "@/components/InlineRename";
@@ -33,6 +33,16 @@ export default function PropertyDetail() {
   );
   const renameDoc = trpc.documents.rename.useMutation({
     onSuccess: () => utils.documents.list.invalidate({ propertyId: id ?? "" }),
+  });
+
+  // Edit piNote state
+  const [editNote, setEditNote] = useState<{ investorId: number; name: string; pctCapital: string | null; current: string } | null>(null);
+  const [noteInput, setNoteInput] = useState("");
+  const upsertLink = trpc.investors.upsertPropertyLink.useMutation({
+    onSuccess: () => {
+      utils.properties.getById.invalidate({ id: id ?? "" });
+      setEditNote(null);
+    },
   });
 
   // Register print payload
@@ -193,6 +203,9 @@ export default function PropertyDetail() {
                   <th className="text-left px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">
                     Email
                   </th>
+                  <th className="text-left px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">
+                    Notes
+                  </th>
                   <th className="text-left px-5 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide w-28">
                     Status
                   </th>
@@ -222,12 +235,6 @@ export default function PropertyDetail() {
                         >
                           {inv.investorName}
                         </Link>
-                        {inv.piNotes && (
-                          <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3 shrink-0" />
-                            {inv.piNotes}
-                          </p>
-                        )}
                       </td>
                       <td className="px-5 py-3">
                         {inv.investorEmail ? (
@@ -241,6 +248,24 @@ export default function PropertyDetail() {
                         ) : (
                           <span className="text-slate-300 text-xs">—</span>
                         )}
+                      </td>
+                      <td className="px-5 py-3 hidden md:table-cell">
+                        <div className="flex items-start gap-1.5 group/note">
+                          <span className="text-xs text-slate-500 flex-1 min-w-0">
+                            {inv.piNotes ? (
+                              <span className="text-amber-700">{inv.piNotes.length > 60 ? inv.piNotes.slice(0, 60) + "…" : inv.piNotes}</span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => { setEditNote({ investorId: inv.investorId, name: inv.investorName, pctCapital: inv.pctCapital, current: inv.piNotes ?? "" }); setNoteInput(inv.piNotes ?? ""); }}
+                            className="shrink-0 p-1 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover/note:opacity-100"
+                            title="Edit note"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        </div>
                       </td>
                       <td className="px-5 py-3">
                         {inv.investorStatus !== "active" ? (
@@ -316,6 +341,41 @@ export default function PropertyDetail() {
           allDocs={propertyDocs ?? []}
           onClose={() => setPreviewDoc(null)}
         />
+      )}
+
+      {/* Edit piNote dialog */}
+      {editNote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <StickyNote className="w-4 h-4 text-amber-500" />
+              <h3 className="text-sm font-semibold text-slate-800">Edit Note — {editNote.name}</h3>
+            </div>
+            <textarea
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              placeholder="Add a note for this investor on this property…"
+              rows={4}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setEditNote(null)}
+                className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => upsertLink.mutate({ propertyId: id ?? "", investorId: editNote.investorId, pctCapital: editNote.pctCapital, notes: noteInput.trim() || null })}
+                disabled={upsertLink.isPending}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {upsertLink.isPending ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );

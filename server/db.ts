@@ -115,6 +115,8 @@ export async function listProperties(search?: string) {
       isGrovePark: properties.isGrovePark,
       mtNote: properties.mtNote,
       investorCount: sql<number>`COUNT(DISTINCT ${propertyInvestors.investorId})`,
+      // Most recent non-null piNote across all investors in this property
+      latestPiNote: sql<string | null>`MAX(CASE WHEN ${propertyInvestors.notes} IS NOT NULL AND ${propertyInvestors.notes} != '' THEN ${propertyInvestors.notes} ELSE NULL END)`,
     })
     .from(properties)
     .leftJoin(propertyInvestors, eq(properties.id, propertyInvestors.propertyId))
