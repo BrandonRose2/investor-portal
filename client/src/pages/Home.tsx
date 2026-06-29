@@ -1,8 +1,8 @@
-// Home page — Properties & Investors directory
+// Home page — Command Center dashboard
 // Fetches from tRPC instead of static data
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearch, useLocation } from "wouter";
-import { Search, Building2, Users, ChevronRight, AlertCircle, Loader2 } from "lucide-react";
+import { Search, Building2, Users, ChevronRight, AlertCircle, Loader2, Pencil, Check, X } from "lucide-react";
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
 import { usePrint } from "@/contexts/PrintContext";
@@ -45,10 +45,123 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   bought_out:  { label: "Bought Out",  cls: "bg-red-50 text-red-700 border-red-200" },
 };
 
+// Inline note popover component
+function InlineNoteEditor({
+  investorId,
+  currentNote,
+  onSaved,
+}: {
+  investorId: number;
+  currentNote: string | null;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(currentNote ?? "");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const utils = trpc.useUtils();
+  const updateInfo = trpc.investors.updateInfo.useMutation({
+    onSuccess: () => {
+      utils.investors.list.invalidate();
+      onSaved();
+      setOpen(false);
+    },
+  });
+
+  // Open popover and focus textarea
+  function handleOpen(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setValue(currentNote ?? "");
+    setOpen(true);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  }
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function handleSave(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    updateInfo.mutate({ id: investorId, adminNotes: value.trim() || null });
+  }
+
+  function handleCancel(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setOpen(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full" onClick={(e) => e.preventDefault()}>
+      {/* Display row */}
+      <div
+        className="flex items-start gap-1 group/note cursor-pointer"
+        onClick={handleOpen}
+      >
+        <span className="flex-1 min-w-0 text-xs">
+          {currentNote ? (
+            <span className="text-blue-700 truncate block" title={currentNote}>
+              {currentNote.length > 55 ? currentNote.slice(0, 55) + "…" : currentNote}
+            </span>
+          ) : (
+            <span className="text-slate-300">—</span>
+          )}
+        </span>
+        <Pencil className="w-3 h-3 text-slate-300 group-hover/note:text-blue-500 shrink-0 mt-0.5 transition-colors" />
+      </div>
+
+      {/* Popover */}
+      {open && (
+        <div
+          className="absolute z-50 right-0 top-6 w-72 bg-white border border-slate-200 rounded-xl shadow-lg p-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-xs font-semibold text-slate-600 mb-1.5">Edit Note</p>
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            rows={3}
+            placeholder="Add a note…"
+            className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-800 placeholder-slate-400"
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={handleCancel}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-3 h-3" /> Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={updateInfo.isPending}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              <Check className="w-3 h-3" /> Save
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const search = useSearch();
   const [, navigate] = useLocation();
   const [query, setQuery] = useState("");
+  const [noteRefreshKey, setNoteRefreshKey] = useState(0);
   const tab: Tab = new URLSearchParams(search).get("tab") === "investors" ? "investors" : "properties";
 
   const { data: propertiesData, isLoading: propLoading } = trpc.properties.list.useQuery({});
@@ -73,9 +186,11 @@ export default function Home() {
     return investorsData.filter(
       (inv) =>
         inv.name.toLowerCase().includes(q) ||
-        (inv.email ?? "").toLowerCase().includes(q)
+        (inv.email ?? "").toLowerCase().includes(q) ||
+        (inv.adminNotes ?? "").toLowerCase().includes(q) ||
+        ((inv as any).latestPiNote ?? "").toLowerCase().includes(q)
     );
-  }, [investorsData, query]);
+  }, [investorsData, query, noteRefreshKey]);
 
   const isLoading = tab === "properties" ? propLoading : invLoading;
 
@@ -153,11 +268,10 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Loading state */}
+        {/* Loading */}
         {isLoading && (
-          <div className="flex items-center justify-center py-16 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            <span>Loading…</span>
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
           </div>
         )}
 
@@ -217,67 +331,84 @@ export default function Home() {
 
         {/* Investors tab */}
         {!isLoading && tab === "investors" && (
-          <div className="space-y-2">
+          <div>
             {filteredInvestors.length === 0 && (
               <div className="flex flex-col items-center py-16 text-slate-400">
                 <Users className="w-8 h-8 mb-2 opacity-40" />
                 <p className="text-sm">No investors match your search.</p>
               </div>
             )}
-            {filteredInvestors.map((inv) => {
-              const c = avatarColor(inv.name);
-              const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.active;
-              return (
-                <Link key={inv.id} href={`/investor/${inv.id}`}>
-                  <div className="group flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100 cursor-pointer">
-                    {/* Avatar */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${c.bg} ${c.text}`}>
-                      {initials(inv.name)}
-                    </div>
 
-                    {/* Name + email */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-bold text-slate-900 truncate">{inv.name}</span>
-                        {inv.status !== "active" && (
-                          <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs border ${badge.cls}`}>
-                            {badge.label}
-                          </span>
-                        )}
+            {filteredInvestors.length > 0 && (
+              <>
+                {/* Column header row */}
+                <div className="hidden md:flex items-center gap-3 px-4 pb-1.5 mb-1">
+                  {/* avatar placeholder */}
+                  <div className="w-8 shrink-0" />
+                  {/* name / email */}
+                  <div className="flex-1 min-w-0 text-xs font-bold text-slate-400 uppercase tracking-wide">Investor</div>
+                  {/* notes header */}
+                  <div className="w-64 shrink-0 text-xs font-bold text-slate-400 uppercase tracking-wide">Notes</div>
+                  {/* props + chevron */}
+                  <div className="shrink-0 w-16" />
+                </div>
+
+                <div className="space-y-2">
+                  {filteredInvestors.map((inv) => {
+                    const c = avatarColor(inv.name);
+                    const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.active;
+                    return (
+                      <div key={inv.id} className="group flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/40 transition-colors duration-100">
+                        {/* Avatar — links to detail */}
+                        <Link href={`/investor/${inv.id}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer ${c.bg} ${c.text}`}>
+                            {initials(inv.name)}
+                          </div>
+                        </Link>
+
+                        {/* Name + email — links to detail */}
+                        <Link href={`/investor/${inv.id}`} className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-bold text-slate-900 truncate">{inv.name}</span>
+                            {inv.status !== "active" && (
+                              <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs border ${badge.cls}`}>
+                                {badge.label}
+                              </span>
+                            )}
+                          </div>
+                          {inv.email && (
+                            <div className="text-sm text-slate-500 mt-0.5 truncate">{inv.email}</div>
+                          )}
+                        </Link>
+
+                        {/* Notes column — inline editable, stops link propagation */}
+                        <div className="hidden md:block w-64 shrink-0 relative">
+                          <InlineNoteEditor
+                            investorId={inv.id}
+                            currentNote={inv.adminNotes ?? null}
+                            onSaved={() => setNoteRefreshKey((k) => k + 1)}
+                          />
+                          {(inv as any).latestPiNote && (
+                            <span className="text-xs text-amber-700 truncate block mt-0.5" title={(inv as any).latestPiNote}>
+                              {(inv as any).latestPiNote.length > 55
+                                ? (inv as any).latestPiNote.slice(0, 55) + "…"
+                                : (inv as any).latestPiNote}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Property count + chevron — links to detail */}
+                        <Link href={`/investor/${inv.id}`} className="shrink-0 flex items-center gap-1 text-sm font-medium text-slate-600">
+                          <Building2 className="w-4 h-4" />
+                          {Number(inv.propertyCount)}
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors ml-1" />
+                        </Link>
                       </div>
-                      {inv.email && (
-                        <div className="text-sm text-slate-500 mt-0.5 truncate">{inv.email}</div>
-                      )}
-                    </div>
-
-                    {/* Notes column */}
-                    <div className="hidden md:flex flex-col justify-center min-w-0 w-64 shrink-0">
-                      {inv.adminNotes && (
-                        <span className="text-xs text-blue-700 truncate" title={inv.adminNotes}>
-                          {inv.adminNotes.length > 55 ? inv.adminNotes.slice(0, 55) + "…" : inv.adminNotes}
-                        </span>
-                      )}
-                      {inv.latestPiNote && (
-                        <span className="text-xs text-amber-700 truncate mt-0.5" title={inv.latestPiNote}>
-                          {inv.latestPiNote.length > 55 ? inv.latestPiNote.slice(0, 55) + "…" : inv.latestPiNote}
-                        </span>
-                      )}
-                      {!inv.adminNotes && !inv.latestPiNote && (
-                        <span className="text-xs text-slate-300">—</span>
-                      )}
-                    </div>
-
-                    {/* Property count */}
-                    <div className="shrink-0 flex items-center gap-1 text-sm font-medium text-slate-600">
-                      <Building2 className="w-4 h-4" />
-                      {Number(inv.propertyCount)}
-                    </div>
-
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors shrink-0" />
-                  </div>
-                </Link>
-              );
-            })}
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
