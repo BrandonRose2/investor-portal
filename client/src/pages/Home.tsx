@@ -246,7 +246,7 @@ export default function Home() {
                       {initials(inv.name)}
                     </div>
 
-                    {/* Name + status */}
+                    {/* Name + status + notes */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold text-slate-900 truncate">{inv.name}</span>
@@ -258,6 +258,21 @@ export default function Home() {
                       </div>
                       {inv.email && (
                         <div className="text-sm text-slate-500 mt-0.5 truncate">{inv.email}</div>
+                      )}
+                      {/* Show adminNotes and/or latestPiNote inline */}
+                      {(inv.adminNotes || inv.latestPiNote) && (
+                        <div className="flex flex-wrap gap-x-3 mt-0.5">
+                          {inv.adminNotes && (
+                            <span className="text-xs text-blue-700 truncate max-w-xs" title={inv.adminNotes}>
+                              📋 {inv.adminNotes.length > 60 ? inv.adminNotes.slice(0, 60) + "…" : inv.adminNotes}
+                            </span>
+                          )}
+                          {inv.latestPiNote && (
+                            <span className="text-xs text-amber-700 truncate max-w-xs" title={inv.latestPiNote}>
+                              🏠 {inv.latestPiNote.length > 60 ? inv.latestPiNote.slice(0, 60) + "…" : inv.latestPiNote}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
 

@@ -129,7 +129,9 @@ export async function listProperties(search?: string) {
     (p) =>
       p.name.toLowerCase().includes(q) ||
       p.entityName.toLowerCase().includes(q) ||
-      (p.entityEin ?? "").toLowerCase().includes(q)
+      (p.entityEin ?? "").toLowerCase().includes(q) ||
+      (p.latestPiNote ?? "").toLowerCase().includes(q) ||
+      (p.mtNote ?? "").toLowerCase().includes(q)
   );
 }
 
@@ -173,6 +175,8 @@ export async function listInvestors(search?: string) {
       status: investors.status,
       adminNotes: investors.adminNotes,
       propertyCount: sql<number>`COUNT(DISTINCT ${propertyInvestors.propertyId})`,
+      // Most recent non-null piNote across all properties for this investor
+      latestPiNote: sql<string | null>`MAX(CASE WHEN ${propertyInvestors.notes} IS NOT NULL AND ${propertyInvestors.notes} != '' THEN ${propertyInvestors.notes} ELSE NULL END)`,
     })
     .from(investors)
     .leftJoin(propertyInvestors, eq(investors.id, propertyInvestors.investorId))
@@ -184,7 +188,9 @@ export async function listInvestors(search?: string) {
   return rows.filter(
     (i) =>
       i.name.toLowerCase().includes(q) ||
-      (i.email ?? "").toLowerCase().includes(q)
+      (i.email ?? "").toLowerCase().includes(q) ||
+      (i.adminNotes ?? "").toLowerCase().includes(q) ||
+      (i.latestPiNote ?? "").toLowerCase().includes(q)
   );
 }
 

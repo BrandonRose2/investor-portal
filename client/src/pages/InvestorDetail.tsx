@@ -206,6 +206,12 @@ export default function InvestorDetail() {
               {investor.phone && (
                 <p className="text-xs text-slate-500 mt-1">{investor.phone}</p>
               )}
+              {investor.adminNotes && (
+                <div className="mt-2 flex items-start gap-1.5">
+                  <span className="text-xs font-semibold text-blue-700 shrink-0">Note:</span>
+                  <p className="text-xs text-blue-700 leading-relaxed">{investor.adminNotes}</p>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="flex items-center gap-1 text-sm text-slate-500">
