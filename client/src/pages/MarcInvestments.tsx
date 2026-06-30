@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Building2, DollarSign, TrendingUp, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Lock, Building2, DollarSign, TrendingUp, ChevronRight, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 
 // ─── Session storage key ──────────────────────────────────────────────────────
@@ -253,9 +253,18 @@ function MarcDashboard({ onLock }: { onLock: () => void }) {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Marc's Investments</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Portfolio overview</p>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 rounded-md px-3 py-1.5 transition-colors hover:border-blue-200 hover:bg-blue-50"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Main Portal
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Marc's Investments</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Portfolio overview</p>
+          </div>
         </div>
         <button
           onClick={onLock}
