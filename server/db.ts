@@ -10,8 +10,10 @@ import {
   documents,
   investorNotes,
   dismissedDuplicates,
+  marcAccessUsers,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import bcrypt from "bcryptjs";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -874,4 +876,97 @@ export async function restoreDismissedGroup(id: number) {
 export async function getDismissedKeys(): Promise<Set<string>> {
   const rows = await listDismissedDuplicates();
   return new Set(rows.map((r) => r.groupKey));
+}
+
+// ─── Marc's Investments Access Control ───────────────────────────────────────
+
+export async function listMarcAccessUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: marcAccessUsers.id,
+      email: marcAccessUsers.email,
+      displayName: marcAccessUsers.displayName,
+      isActive: marcAccessUsers.isActive,
+      hasPin: sql<boolean>`(${marcAccessUsers.pinHash} IS NOT NULL)`,
+      lastAccessAt: marcAccessUsers.lastAccessAt,
+      createdAt: marcAccessUsers.createdAt,
+    })
+    .from(marcAccessUsers)
+    .orderBy(asc(marcAccessUsers.email));
+}
+
+export async function addMarcAccessUser(email: string, displayName?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .insert(marcAccessUsers)
+    .values({ email: email.toLowerCase().trim(), displayName: displayName ?? null })
+    .onDuplicateKeyUpdate({ set: { isActive: true, displayName: displayName ?? undefined } });
+}
+
+export async function removeMarcAccessUser(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(marcAccessUsers).set({ isActive: false }).where(eq(marcAccessUsers.id, id));
+}
+
+export async function resetMarcAccessPin(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(marcAccessUsers).set({ pinHash: null }).where(eq(marcAccessUsers.id, id));
+}
+
+/** Returns null if email not found or inactive. Returns 'no-pin' if PIN not yet set. */
+export async function checkMarcAccessEmail(
+  email: string
+): Promise<"no-pin" | "has-pin" | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ pinHash: marcAccessUsers.pinHash, isActive: marcAccessUsers.isActive })
+    .from(marcAccessUsers)
+    .where(eq(marcAccessUsers.email, email.toLowerCase().trim()))
+    .limit(1);
+  if (!rows.length || !rows[0].isActive) return null;
+  return rows[0].pinHash ? "has-pin" : "no-pin";
+}
+
+/** Sets a new PIN for the user. Returns false if email not found/inactive. */
+export async function setMarcAccessPin(email: string, pin: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db
+    .select({ id: marcAccessUsers.id, isActive: marcAccessUsers.isActive })
+    .from(marcAccessUsers)
+    .where(eq(marcAccessUsers.email, email.toLowerCase().trim()))
+    .limit(1);
+  if (!rows.length || !rows[0].isActive) return false;
+  const hash = await bcrypt.hash(pin, 10);
+  await db
+    .update(marcAccessUsers)
+    .set({ pinHash: hash })
+    .where(eq(marcAccessUsers.id, rows[0].id));
+  return true;
+}
+
+/** Verifies a PIN. Returns true on success and updates lastAccessAt. */
+export async function verifyMarcAccessPin(email: string, pin: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db
+    .select({ id: marcAccessUsers.id, pinHash: marcAccessUsers.pinHash, isActive: marcAccessUsers.isActive })
+    .from(marcAccessUsers)
+    .where(eq(marcAccessUsers.email, email.toLowerCase().trim()))
+    .limit(1);
+  if (!rows.length || !rows[0].isActive || !rows[0].pinHash) return false;
+  const ok = await bcrypt.compare(pin, rows[0].pinHash);
+  if (ok) {
+    await db
+      .update(marcAccessUsers)
+      .set({ lastAccessAt: new Date() })
+      .where(eq(marcAccessUsers.id, rows[0].id));
+  }
+  return ok;
 }

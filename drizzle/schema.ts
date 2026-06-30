@@ -147,3 +147,26 @@ export const dismissedDuplicates = mysqlTable("dismissed_duplicates", {
 
 export type DismissedDuplicate = typeof dismissedDuplicates.$inferSelect;
 export type InsertDismissedDuplicate = typeof dismissedDuplicates.$inferInsert;
+
+// ─── Marc's Investments Access Control ───────────────────────────────────────
+// Stores the list of users permitted to access the PIN-protected Marc's
+// Investments section. Each user sets their own 4-digit PIN on first access.
+export const marcAccessUsers = mysqlTable("marc_access_users", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Email address used to identify the user at the PIN gate. */
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  /** Display name shown in the Settings access list. */
+  displayName: varchar("display_name", { length: 256 }),
+  /**
+   * bcrypt hash of the 4-digit PIN. NULL means the user has been granted
+   * access but has not yet created their PIN.
+   */
+  pinHash: varchar("pin_hash", { length: 256 }),
+  /** Whether this user is currently allowed to access the section. */
+  isActive: boolean("is_active").default(true).notNull(),
+  /** Timestamp of the most recent successful PIN entry. */
+  lastAccessAt: timestamp("last_access_at"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type MarcAccessUser = typeof marcAccessUsers.$inferSelect;
+export type InsertMarcAccessUser = typeof marcAccessUsers.$inferInsert;

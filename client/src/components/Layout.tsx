@@ -2,7 +2,7 @@
 // Design: light mode, blue-700 accent, Inter font, slate palette
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Building2, Users, Menu, X, Settings2, FileText, Printer } from "lucide-react";
+import { Building2, Users, Menu, X, Settings2, FileText, Printer, TrendingUp } from "lucide-react";
 import { usePrint } from "@/contexts/PrintContext";
 
 interface LayoutProps {
@@ -12,11 +12,12 @@ interface LayoutProps {
 const NAV_TOP = [
   { href: "/", label: "Properties", icon: Building2 },
   { href: "/?tab=investors", label: "Investors", icon: Users },
+  { href: "/marc", label: "Marc's Investments", icon: TrendingUp },
   { href: "/documents", label: "Documents", icon: FileText },
 ];
 
 const NAV_BOTTOM = [
-  { href: "/settings", label: "Admin Settings", icon: Settings2 },
+  { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 
 export default function Layout({ children }: LayoutProps) {

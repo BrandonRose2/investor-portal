@@ -9,6 +9,7 @@ import InvestorDetail from "./pages/InvestorDetail";
 import Settings from "./pages/Settings";
 import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
+import MarcInvestments from "./pages/MarcInvestments";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/investor/:id" component={InvestorDetail} />
       <Route path="/settings" component={Settings} />
       <Route path="/documents" component={Documents} />
+      <Route path="/marc" component={MarcInvestments} />
       <Route component={NotFound} />
     </Switch>
   );

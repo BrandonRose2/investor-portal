@@ -1,4 +1,4 @@
-// Admin Settings page — PIN-gated, tRPC-backed
+// Settings page — PIN-gated, tRPC-backed
 // Investors tab (default): grouped view, expandable rows, status management
 // Properties tab: property list with investor counts
 import { useState, useRef, useMemo } from "react";
@@ -46,6 +46,9 @@ import {
   Crown,
   EyeOff,
   RotateCcw,
+  Shield,
+  UserMinus,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -176,7 +179,7 @@ function PinLock({ onUnlock }: { onUnlock: () => void }) {
           <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-5">
             <Lock className="w-7 h-7 text-blue-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-1">Admin Settings</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">Settings</h2>
           <p className="text-sm text-slate-500 mb-7">Enter your 4-digit PIN to continue</p>
           <div className="flex justify-center gap-3 mb-4">
             {digits.map((d, i) => (
@@ -203,7 +206,7 @@ function PinLock({ onUnlock }: { onUnlock: () => void }) {
 }
 
 // ── Main Admin Panel ───────────────────────────────────────────────────────────
-type AdminTab = "investors" | "properties" | "duplicates";
+type AdminTab = "investors" | "properties" | "duplicates" | "access";
 
 export default function Settings() {
   const [unlocked, setUnlocked] = useState(false);
@@ -295,6 +298,35 @@ export default function Settings() {
     onError: () => toast.error("Restore failed"),
   });
 
+  // Access Control state
+  const [newAccessEmail, setNewAccessEmail] = useState("");
+  const [newAccessName, setNewAccessName] = useState("");
+
+  const { data: accessUsers, refetch: refetchAccessUsers } = trpc.marc.listUsers.useQuery(
+    undefined,
+    { enabled: tab === "access" }
+  );
+  const addAccessUserMut = trpc.marc.addUser.useMutation({
+    onSuccess: () => { refetchAccessUsers(); setNewAccessEmail(""); setNewAccessName(""); toast.success("User added"); },
+    onError: () => toast.error("Failed to add user"),
+  });
+  const removeAccessUserMut = trpc.marc.removeUser.useMutation({
+    onSuccess: () => { refetchAccessUsers(); toast.success("User removed"); },
+    onError: () => toast.error("Failed to remove user"),
+  });
+  const resetPinMut = trpc.marc.resetPin.useMutation({
+    onSuccess: () => { refetchAccessUsers(); toast.success("PIN reset — user will create a new PIN on next login"); },
+    onError: () => toast.error("Failed to reset PIN"),
+  });
+
+  // Add Property state
+  const [addPropOpen, setAddPropOpen] = useState(false);
+  const [newProp, setNewProp] = useState({ id: "", name: "", entityName: "", entityEin: "", isGrovePark: false });
+  const createPropertyMut = trpc.properties.create.useMutation({
+    onSuccess: () => { utils.properties.list.invalidate(); setAddPropOpen(false); setNewProp({ id: "", name: "", entityName: "", entityEin: "", isGrovePark: false }); toast.success("Property added"); },
+    onError: () => toast.error("Failed to add property"),
+  });
+
   // CSV Import dialog
   const [csvOpen, setCsvOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
@@ -366,7 +398,7 @@ export default function Settings() {
               <Settings2 className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Admin Settings</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
               <p className="text-sm text-slate-500">Manage investors, properties, and distributions</p>
             </div>
           </div>
@@ -381,6 +413,12 @@ export default function Settings() {
               <Button size="sm" onClick={() => setAddInvOpen(true)}>
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Add Investor
+              </Button>
+            )}
+            {tab === "properties" && (
+              <Button size="sm" onClick={() => setAddPropOpen(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Property
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => setUnlocked(false)}>
@@ -423,10 +461,19 @@ export default function Settings() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => { setTab("access"); setSearch(""); }}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors
+              ${tab === "access" ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"}`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            Access Control
+            {accessUsers && <span className="ml-1 px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-mono">{accessUsers.length}</span>}
+          </button>
         </div>
 
-        {/* Search bar — hidden on duplicates tab */}
-        {tab !== "duplicates" && (
+        {/* Search bar — hidden on duplicates and access tabs */}
+        {tab !== "duplicates" && tab !== "access" && (
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -707,6 +754,105 @@ export default function Settings() {
             )}
           </div>
         )}
+
+        {/* ── ACCESS CONTROL TAB ── */}
+        {tab === "access" && (
+          <div className="space-y-6">
+            {/* Info banner */}
+            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <Shield className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <div className="text-sm text-blue-800">
+                <span className="font-semibold">Marc's Investments Access Control</span> — manage who can access the PIN-protected Marc's Investments section.
+                Users must enter their email and create a personal 4-digit PIN on first access. You can reset a PIN to force the user to create a new one.
+              </div>
+            </div>
+
+            {/* Add user form */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-slate-800 mb-3">Grant Access</h3>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={newAccessEmail}
+                  onChange={e => setNewAccessEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="Display name (optional)"
+                  value={newAccessName}
+                  onChange={e => setNewAccessName(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={() => addAccessUserMut.mutate({ email: newAccessEmail.trim().toLowerCase(), displayName: newAccessName.trim() || undefined })}
+                  disabled={!newAccessEmail.trim() || addAccessUserMut.isPending}
+                >
+                  {addAccessUserMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Users table */}
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Email</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden sm:table-cell">Name</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">PIN Set</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide hidden md:table-cell">Last Access</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-bold text-slate-600 uppercase tracking-wide">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {!accessUsers && (
+                    <tr><td colSpan={5} className="py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Loading…</td></tr>
+                  )}
+                  {accessUsers && accessUsers.length === 0 && (
+                    <tr><td colSpan={5} className="py-8 text-center text-slate-400">No users have been granted access yet.</td></tr>
+                  )}
+                  {accessUsers && accessUsers.map((u: any) => (
+                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-slate-700">{u.email}</td>
+                      <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{u.displayName || <span className="text-slate-300">—</span>}</td>
+                      <td className="px-4 py-3 text-center">
+                        {u.hasPin
+                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">✓ Set</span>
+                          : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-400 border border-slate-200 font-medium">Not set</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-400 hidden md:table-cell">
+                        {u.lastAccessAt ? new Date(u.lastAccessAt).toLocaleDateString() : "Never"}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {u.hasPin && (
+                            <button
+                              onClick={() => resetPinMut.mutate({ id: u.id })}
+                              className="p-1.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                              title="Reset PIN"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeAccessUserMut.mutate({ id: u.id })}
+                            className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            title="Remove access"
+                          >
+                            <UserMinus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Merge Investor Dialog */}
@@ -875,6 +1021,53 @@ export default function Settings() {
               disabled={!newInv.name.trim() || createInvestor.isPending}
             >
               {createInvestor.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Property Dialog */}
+      <Dialog open={addPropOpen} onOpenChange={setAddPropOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Property</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Property ID * <span className="text-slate-400 font-normal">(slug, e.g. "grove-park")</span></label>
+              <Input value={newProp.id} onChange={(e) => setNewProp({ ...newProp, id: e.target.value.toLowerCase().replace(/\s+/g, '-') })} placeholder="property-slug" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Property Name *</label>
+              <Input value={newProp.name} onChange={(e) => setNewProp({ ...newProp, name: e.target.value })} placeholder="Grove Park Apartments" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Entity Name *</label>
+              <Input value={newProp.entityName} onChange={(e) => setNewProp({ ...newProp, entityName: e.target.value })} placeholder="Grove Park LLC" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">EIN</label>
+              <Input value={newProp.entityEin} onChange={(e) => setNewProp({ ...newProp, entityEin: e.target.value })} placeholder="XX-XXXXXXX" />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isGrovePark"
+                checked={newProp.isGrovePark}
+                onChange={(e) => setNewProp({ ...newProp, isGrovePark: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300"
+              />
+              <label htmlFor="isGrovePark" className="text-xs font-semibold text-slate-600 cursor-pointer">MT Structure (Grove Park)</label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddPropOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => createPropertyMut.mutate({ id: newProp.id, name: newProp.name, entityName: newProp.entityName, entityEin: newProp.entityEin || null, isGrovePark: newProp.isGrovePark })}
+              disabled={!newProp.id.trim() || !newProp.name.trim() || !newProp.entityName.trim() || createPropertyMut.isPending}
+            >
+              {createPropertyMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
               Add
             </Button>
           </DialogFooter>

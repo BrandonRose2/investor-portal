@@ -34,6 +34,13 @@ import {
   dismissDuplicateGroup,
   restoreDismissedGroup,
   getDismissedKeys,
+  listMarcAccessUsers,
+  addMarcAccessUser,
+  removeMarcAccessUser,
+  resetMarcAccessPin,
+  checkMarcAccessEmail,
+  setMarcAccessPin,
+  verifyMarcAccessPin,
 } from "./db";
 
 export const appRouter = router({
@@ -322,6 +329,37 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number().int() }))
       .mutation(({ input }) => deleteDocument(input.id)),
+  }),
+
+  // ─── Marc's Investments Access Control ──────────────────────────────────────────────────
+
+  marc: router({
+    /** Check if an email is on the access list. Returns 'no-pin' | 'has-pin' | null */
+    checkEmail: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(({ input }) => checkMarcAccessEmail(input.email)),
+
+    /** Set a PIN for the given email (first-time setup or reset). */
+    setPin: publicProcedure
+      .input(z.object({ email: z.string().email(), pin: z.string().length(4).regex(/^\d{4}$/) }))
+      .mutation(({ input }) => setMarcAccessPin(input.email, input.pin)),
+
+    /** Verify a PIN. Returns true on success and records lastAccessAt. */
+    verifyPin: publicProcedure
+      .input(z.object({ email: z.string().email(), pin: z.string().length(4).regex(/^\d{4}$/) }))
+      .mutation(({ input }) => verifyMarcAccessPin(input.email, input.pin)),
+
+    // Admin procedures
+    listUsers: publicProcedure.query(() => listMarcAccessUsers()),
+    addUser: publicProcedure
+      .input(z.object({ email: z.string().email(), displayName: z.string().optional() }))
+      .mutation(({ input }) => addMarcAccessUser(input.email, input.displayName)),
+    removeUser: publicProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(({ input }) => removeMarcAccessUser(input.id)),
+    resetPin: publicProcedure
+      .input(z.object({ id: z.number().int() }))
+      .mutation(({ input }) => resetMarcAccessPin(input.id)),
   }),
 });
 

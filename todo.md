@@ -53,3 +53,13 @@
 - [x] Property detail: documents section per property (shows uploaded files with download links)
 - [x] CSV import: support for distributions bulk import via Settings admin panel
 - [x] Distribution: year-over-year chart per investor (deferred by user — will decide later)
+## Phase 6: Marc's Investments + Settings Rename
+- [x] Layout.tsx: Added "Marc's Investments" nav item (TrendingUp icon) below Investors
+- [x] Layout.tsx: Renamed "Admin Settings" to "Settings" in NAV_BOTTOM
+- [x] Settings.tsx: Renamed "Admin Settings" to "Settings" (comment, PIN lock h2, main panel h1)
+- [x] MarcInvestments.tsx: Full PIN-protected page (email → create/verify PIN → dashboard)
+- [x] App.tsx: /marc route wired to MarcInvestments
+- [x] Settings.tsx: Access Control tab added (list users, add by email, remove, reset PIN)
+- [x] Settings.tsx: Add Property dialog added (id, name, entityName, EIN, isGrovePark)
+- [x] Settings.tsx: Add Investor dialog was already implemented
+- [x] All 26 tests passing
