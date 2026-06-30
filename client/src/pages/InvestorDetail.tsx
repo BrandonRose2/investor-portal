@@ -5,8 +5,13 @@ import { Link, useParams } from "wouter";
 import { useEffect } from "react";
 import {
   ArrowLeft, Building2, Users, Mail, ChevronRight, Loader2,
-  FileText, Clock, Plus, Trash2, DollarSign, TrendingUp, Download, Eye
+  FileText, Clock, Plus, Trash2, DollarSign, TrendingUp, Download, Eye,
+  LinkIcon, Unlink
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import Layout from "@/components/Layout";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -55,6 +60,11 @@ export default function InvestorDetail() {
 
   const utils = trpc.useUtils();
   const [noteContent, setNoteContent] = useState("");
+  const [linkPropOpen, setLinkPropOpen] = useState(false);
+  const [propSearch, setPropSearch] = useState("");
+  const [selectedPropId, setSelectedPropId] = useState("");
+  const [linkPct, setLinkPct] = useState("");
+  const [linkNotes, setLinkNotes] = useState("");
   const [previewDoc, setPreviewDoc] = useState<PreviewDoc | null>(null);
   const renameDoc = trpc.documents.rename.useMutation({
     onSuccess: () => utils.documents.list.invalidate({ investorId }),
@@ -80,6 +90,34 @@ export default function InvestorDetail() {
     { investorId },
     { enabled: !!investorId }
   );
+
+  const { data: allProperties } = trpc.properties.list.useQuery(
+    { search: propSearch },
+    { enabled: linkPropOpen }
+  );
+
+  const upsertLink = trpc.investors.upsertPropertyLink.useMutation({
+    onSuccess: () => {
+      utils.investors.getById.invalidate({ id: investorId });
+      utils.investors.financialSummary.invalidate({ id: investorId });
+      setLinkPropOpen(false);
+      setSelectedPropId("");
+      setLinkPct("");
+      setLinkNotes("");
+      setPropSearch("");
+      toast.success("Property linked successfully");
+    },
+    onError: () => toast.error("Failed to link property"),
+  });
+
+  const removeLink = trpc.investors.removePropertyLink.useMutation({
+    onSuccess: () => {
+      utils.investors.getById.invalidate({ id: investorId });
+      utils.investors.financialSummary.invalidate({ id: investorId });
+      toast.success("Property link removed");
+    },
+    onError: () => toast.error("Failed to remove link"),
+  });
 
   // Register print payload whenever data is ready
   const { setPayload } = usePrint();
@@ -262,11 +300,20 @@ export default function InvestorDetail() {
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-6">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-700">Properties with Ownership Interest</h2>
-            {totalPct > 0 && (
-              <span className="font-mono font-semibold text-sm" style={{ color: "#16a34a" }}>
-                Total: {totalPct.toFixed(4)}%
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {totalPct > 0 && (
+                <span className="font-mono font-semibold text-sm" style={{ color: "#16a34a" }}>
+                  Total: {totalPct.toFixed(4)}%
+                </span>
+              )}
+              <button
+                onClick={() => setLinkPropOpen(true)}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 rounded-md px-2.5 py-1.5 transition-colors hover:bg-blue-50"
+              >
+                <LinkIcon className="w-3.5 h-3.5" />
+                Link Property
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -311,9 +358,18 @@ export default function InvestorDetail() {
                       {p.entityName}
                     </td>
                     <td className="px-2 py-3">
-                      <Link href={`/property/${p.propertyId}`}>
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors" />
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => removeLink.mutate({ propertyId: p.propertyId, investorId })}
+                          className="p-1 rounded text-slate-200 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Remove link"
+                        >
+                          <Unlink className="w-3.5 h-3.5" />
+                        </button>
+                        <Link href={`/property/${p.propertyId}`}>
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-400 transition-colors" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -482,6 +538,79 @@ export default function InvestorDetail() {
           </div>
         </div>
       )}
+
+      {/* Link Property Dialog */}
+      <Dialog open={linkPropOpen} onOpenChange={(o) => { setLinkPropOpen(o); if (!o) { setSelectedPropId(""); setLinkPct(""); setLinkNotes(""); setPropSearch(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-blue-600" />
+              Link Property to {investor.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Property search */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Search Property</label>
+              <Input
+                placeholder="Type to search properties…"
+                value={propSearch}
+                onChange={(e) => { setPropSearch(e.target.value); setSelectedPropId(""); }}
+              />
+              {propSearch && allProperties && allProperties.length > 0 && !selectedPropId && (
+                <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                  {allProperties.map((p: any) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setSelectedPropId(p.id); setPropSearch(p.name); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-medium">{p.name}</span>
+                      <span className="text-xs text-slate-400 ml-2">{p.entityName}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {propSearch && allProperties && allProperties.length === 0 && !selectedPropId && (
+                <p className="text-xs text-slate-400 mt-1 px-1">No properties found.</p>
+              )}
+              {selectedPropId && (
+                <p className="text-xs text-emerald-600 mt-1 px-1">✓ Selected: <strong>{propSearch}</strong></p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">% Capital Interest</label>
+              <Input
+                placeholder="e.g. 5.0000"
+                value={linkPct}
+                onChange={(e) => setLinkPct(e.target.value)}
+                type="number"
+                step="0.0001"
+                min="0"
+                max="100"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
+              <Input
+                placeholder="e.g. MT Structure, transferred from…"
+                value={linkNotes}
+                onChange={(e) => setLinkNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkPropOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => upsertLink.mutate({ propertyId: selectedPropId, investorId, pctCapital: linkPct || null, notes: linkNotes || null })}
+              disabled={!selectedPropId || upsertLink.isPending}
+            >
+              {upsertLink.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <LinkIcon className="w-4 h-4 mr-1" />}
+              Link Property
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* PDF Preview Modal */}
       {previewDoc && (
