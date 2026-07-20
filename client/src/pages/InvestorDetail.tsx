@@ -244,12 +244,7 @@ export default function InvestorDetail() {
               {investor.phone && (
                 <p className="text-xs text-slate-500 mt-1">{investor.phone}</p>
               )}
-              {investor.adminNotes && (
-                <div className="mt-2 flex items-start gap-1.5">
-                  <span className="text-xs font-semibold text-blue-700 shrink-0">Note:</span>
-                  <p className="text-xs text-blue-700 leading-relaxed">{investor.adminNotes}</p>
-                </div>
-              )}
+
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="flex items-center gap-1 text-sm text-slate-500">
@@ -421,6 +416,24 @@ export default function InvestorDetail() {
             <Clock className="w-4 h-4 text-slate-400" />
             <h2 className="text-sm font-semibold text-slate-700">Notes Timeline</h2>
           </div>
+
+          {/* Pinned admin note (from Settings) */}
+          {investor.adminNotes && (
+            <div className="px-5 py-4 border-b border-slate-100 bg-blue-50/40">
+              <div className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                  <FileText className="w-3.5 h-3.5 text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-blue-700">Admin Note</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 font-medium">Pinned</span>
+                  </div>
+                  <p className="text-sm text-blue-800 whitespace-pre-wrap">{investor.adminNotes}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Add note */}
           <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">

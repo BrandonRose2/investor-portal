@@ -150,6 +150,7 @@ export async function getPropertyById(id: string) {
       investorName: investors.name,
       investorEmail: investors.email,
       investorStatus: investors.status,
+      adminNotes: investors.adminNotes,
       pctCapital: propertyInvestors.pctCapital,
       piNotes: propertyInvestors.notes,
       piId: propertyInvestors.id,

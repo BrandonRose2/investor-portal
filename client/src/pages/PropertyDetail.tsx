@@ -250,21 +250,31 @@ export default function PropertyDetail() {
                         )}
                       </td>
                       <td className="px-5 py-3 hidden md:table-cell">
-                        <div className="flex items-start gap-1.5 group/note">
-                          <span className="text-xs text-slate-500 flex-1 min-w-0">
-                            {inv.piNotes ? (
-                              <span className="text-amber-700">{inv.piNotes.length > 60 ? inv.piNotes.slice(0, 60) + "…" : inv.piNotes}</span>
-                            ) : (
-                              <span className="text-slate-300">—</span>
-                            )}
-                          </span>
-                          <button
-                            onClick={() => { setEditNote({ investorId: inv.investorId, name: inv.investorName, pctCapital: inv.pctCapital, current: inv.piNotes ?? "" }); setNoteInput(inv.piNotes ?? ""); }}
-                            className="shrink-0 p-1 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover/note:opacity-100"
-                            title="Edit note"
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </button>
+                        <div className="flex flex-col gap-1">
+                          {/* Admin note (from Settings) shown first */}
+                          {(inv as any).adminNotes && (
+                            <div className="flex items-start gap-1">
+                              <span className="shrink-0 text-xs px-1 py-0.5 rounded bg-blue-100 text-blue-600 font-medium leading-none">Note</span>
+                              <span className="text-xs text-blue-700">{(inv as any).adminNotes.length > 60 ? (inv as any).adminNotes.slice(0, 60) + "…" : (inv as any).adminNotes}</span>
+                            </div>
+                          )}
+                          {/* Property-investor link note (piNotes) */}
+                          <div className="flex items-start gap-1.5 group/note">
+                            <span className="text-xs text-slate-500 flex-1 min-w-0">
+                              {inv.piNotes ? (
+                                <span className="text-amber-700">{inv.piNotes.length > 60 ? inv.piNotes.slice(0, 60) + "…" : inv.piNotes}</span>
+                              ) : !(inv as any).adminNotes ? (
+                                <span className="text-slate-300">—</span>
+                              ) : null}
+                            </span>
+                            <button
+                              onClick={() => { setEditNote({ investorId: inv.investorId, name: inv.investorName, pctCapital: inv.pctCapital, current: inv.piNotes ?? "" }); setNoteInput(inv.piNotes ?? ""); }}
+                              className="shrink-0 p-1 rounded text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover/note:opacity-100"
+                              title="Edit link note"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-3">
