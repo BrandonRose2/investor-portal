@@ -427,7 +427,15 @@ export default function InvestorDetail() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-semibold text-blue-700">Admin Note</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 font-medium">Pinned</span>
+                    {(investor as any).updatedAt && (
+                      <span className="text-xs text-slate-400">
+                        {new Date((investor as any).updatedAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-blue-800 whitespace-pre-wrap">{investor.adminNotes}</p>
                 </div>
